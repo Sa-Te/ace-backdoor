@@ -1,0 +1,90 @@
+@tailwind base;
+
+*,
+*::before,
+*::after {
+  min-width: 0;
+  min-height: 0;
+  background-position: center center;
+  background-repeat: no-repeat;
+  scroll-behavior: smooth;
+  object-position: center center;
+}
+
+*:focus,
+*:-moz-focusring {
+  outline: 0;
+}
+
+html,
+body {
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  box-sizing: border-box;
+  font-family: "Montserrat", sans-serif;
+  min-height: -webkit-fill-available;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+body {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "MontserratRegular";
+  src: url("./fonts/MontserratRegular.ttf") format("truetype");
+  /* Add other font formats (e.g., woff, woff2) for better browser compatibility */
+}
+
+@font-face {
+  font-family: "ChivoBold";
+  src: url("./fonts/ChivoBold.ttf") format("truetype");
+  /* Add other font formats (e.g., woff, woff2) for better browser compatibility */
+}
+
+@font-face {
+  font-family: "Chivo";
+  src: url("./fonts/Chivo-Regular.ttf") format("truetype");
+  /* Add other font formats (e.g., woff, woff2) for better browser compatibility */
+}
+
+@font-face {
+  font-family: "ProximaNovaRegular";
+  src: url("./fonts/ProximaNovaRegular.otf") format("truetype");
+  /* Add other font formats (e.g., woff, woff2) for better browser compatibility */
+}
+
+@font-face {
+  font-family: "ProximaNovaBold";
+  src: url("./fonts/ProximaNovaBold.otf") format("truetype");
+  /* Add other font formats (e.g., woff, woff2) for better browser compatibility */
+}
+
+@font-face {
+  font-family: "MontserratBold";
+  src: url("./fonts/Montserrat-Bold.ttf") format("truetype");
+  /* Add other font formats (e.g., woff, woff2) for better browser compatibility */
+}
+
+@font-face {
+  font-family: "GilroyBold";
+  src: url("./fonts/Gilroy-ExtraBold.otf") format("truetype");
+  /* Add other font formats (e.g., woff, woff2) for better browser compatibility */
+}
+
+@font-face {
+  font-family: "GilroysemiBold";
+  src: url("./fonts/gilroy-semi-bold.ttf") format("truetype");
+  /* Add other font formats (e.g., woff, woff2) for better browser compatibility */
+}
