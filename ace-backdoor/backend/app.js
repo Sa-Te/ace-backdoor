@@ -1,4 +1,5 @@
-// app.js
+// server.js (or app.js if that's your entry file)
+
 const express = require("express");
 const app = express();
 const cors = require("cors");
@@ -7,31 +8,41 @@ const dotenv = require("dotenv");
 const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const bcrypt = require("bcrypt");
+const { Op } = require("sequelize");
+const { sequelize, User, Visitor } = require("./models");
+const { loadDatabase } = require("./services/geoIPService");
 
-// Load environment variables
+// Load .env
 dotenv.config();
-
-// Import Routes
-const authRoutes = require("./routes/authRoutes");
-const visitorRoutes = require("./routes/visitorRoutes");
-const ruleRoutes = require("./routes/ruleRoutes");
-const jsSnippetRoutes = require("./routes/jsSnippetRoutes");
 
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: [
+      "https://apijquery.com",
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-// Apply helmet with CSP adjustments
+
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "https://cdn.socket.io"],
-        connectSrc: ["'self'", "ws://localhost:3000", "http://localhost:3000"],
+        connectSrc: [
+          "'self'",
+          "ws://localhost:3000",
+          "http://localhost:3000",
+          "https://apijquery.com",
+        ],
+        imgSrc: ["'self'", "data:", "*"],
       },
     },
   })
@@ -42,37 +53,116 @@ app.use(express.json());
 // Create HTTP server
 const server = http.createServer(app);
 
-// Initialize socket.io
+// Initialize Socket.IO
 const io = require("socket.io")(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "https://apijquery.com",
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
-// Make io accessible to our router
+// Make IO available to controllers
 app.set("socketio", io);
 
-// Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, "public")));
+// Serve static content
+const publicPath = "/home/apijquery/public_html";
+app.use(express.static(publicPath));
 
-// Rate Limiting
+// Rate limit
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
 });
 app.use(limiter);
 
-// Routes
+// Import routes
+const authRoutes = require("./routes/authRoutes");
+const visitorRoutes = require("./routes/visitorRoutes");
+const ruleRoutes = require("./routes/ruleRoutes");
+const jsSnippetRoutes = require("./routes/jsSnippetRoutes");
+
+// Assign routes
 app.use("/api/auth", authRoutes);
 app.use("/api/visitors", visitorRoutes);
 app.use("/api/rules", ruleRoutes);
 app.use("/api/js-snippets", jsSnippetRoutes);
 
-// Health check
-app.get("/", (req, res) => {
-  res.send("Backend is running.");
+// For any other route, serve your React app
+app.get("*", (req, res) => {
+  if (!req.url.startsWith("/api")) {
+    res.sendFile(path.join(publicPath, "index.html"), (err) => {
+      if (err) {
+        console.error("Error serving index.html:", err);
+        res
+          .status(500)
+          .send("An error occurred while serving the application.");
+      }
+    });
+  }
 });
 
-module.exports = { app, server };
+// Sync DB and start server
+sequelize
+  .sync({ alter: true })
+  .then(async () => {
+    console.log("Database synced.");
+
+    // Ensure there's an admin user
+    const existingUser = await User.findOne({ where: { username: "admin" } });
+    if (!existingUser) {
+      const hashedPassword = await bcrypt.hash("password123", 10);
+      await User.create({ username: "admin", password: hashedPassword });
+      console.log("Admin user created: username=admin, password=password123");
+    }
+
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+    // Start cleanup job
+    startCleanupJob();
+  })
+  .catch((err) => {
+    console.error("Error syncing database:", err);
+  });
+
+// Cleanup visitors if inactive
+function startCleanupJob() {
+  const cleanupInterval = 10000; // every 10 seconds
+  const inactivityTimeout = 15000; // 15 seconds inactivity => offline
+
+  setInterval(async () => {
+    const cutoffTime = new Date(Date.now() - inactivityTimeout);
+    try {
+      const [updatedCount] = await Visitor.update(
+        { active: false },
+        {
+          where: {
+            active: true,
+            lastActive: { [Op.lt]: cutoffTime },
+          },
+        }
+      );
+      if (updatedCount > 0) {
+        console.log(`Marked ${updatedCount} visitor(s) as inactive.`);
+      }
+    } catch (error) {
+      console.error("Error during cleanup job:", error);
+    }
+  }, cleanupInterval);
+}
+
+// Load MaxMind DB
+loadDatabase()
+  .then(() => {
+    console.log("MaxMind GeoLite2 database loaded successfully.");
+  })
+  .catch((err) => {
+    console.error("Failed to load MaxMind database:", err);
+  });

@@ -1,3 +1,5 @@
+// routes/ruleRoutes.js
+
 const express = require("express");
 const router = express.Router();
 const {
@@ -8,19 +10,12 @@ const {
 } = require("../controllers/ruleController");
 const authMiddleware = require("../middleware/authMiddleware");
 
-// Apply authentication middleware to all rule routes
+// Protect these routes with auth
 router.use(authMiddleware);
 
-// GET /api/rules - Retrieve all rules
 router.get("/", getRules);
-
-// POST /api/rules - Create a new rule
 router.post("/", createRule);
-
-// PUT /api/rules/:id - Update a rule
 router.put("/:id", updateRule);
-
-// DELETE /api/rules/:id - Delete a rule
 router.delete("/:id", deleteRule);
 
 module.exports = router;

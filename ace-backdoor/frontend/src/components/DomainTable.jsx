@@ -32,17 +32,25 @@ const DomainTable = ({ data }) => {
   const [itemsPerPage] = useState(5);
   const navigate = useNavigate();
 
+  // 1) Sort data by lastVisit DESC
+  const sortedData = [...data].sort((a, b) => {
+    const dateA = new Date(a.lastVisit);
+    const dateB = new Date(b.lastVisit);
+    return dateB - dateA; // newest first
+  });
+
+  // 2) Now paginate
+  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+  const paginatedData = sortedData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const toggleRow = (domain, hasUrls) => {
     if (hasUrls) {
       setExpandedRow(expandedRow === domain ? null : domain);
     }
   };
-
-  const totalPages = Math.ceil(data.length / itemsPerPage);
-  const paginatedData = data.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
 
   const handleOpen = (url) => {
     navigate(`/settings/${encodeURIComponent(url)}`);

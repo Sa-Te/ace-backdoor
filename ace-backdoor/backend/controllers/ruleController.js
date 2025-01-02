@@ -1,16 +1,19 @@
 // controllers/ruleController.js
+
 const { Rule, JavaScriptSnippet } = require("../models");
 
 exports.getRules = async (req, res) => {
   try {
     const { url } = req.query;
     const whereClause = url ? { url } : {};
+
     const rules = await Rule.findAll({
       where: whereClause,
       include: [
         { model: JavaScriptSnippet, as: "script", attributes: ["id", "name"] },
       ],
     });
+
     res.json(rules);
   } catch (error) {
     console.error("Error fetching rules:", error);

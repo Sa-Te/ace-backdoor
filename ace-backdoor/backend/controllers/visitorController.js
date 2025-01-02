@@ -1,5 +1,6 @@
 // controllers/visitorController.js
-const { Visitor } = require("../models");
+
+const { Visitor, Rule, JavaScriptSnippet } = require("../models");
 const { getCountry } = require("../services/geoIPService");
 
 exports.trackVisitor = async (req, res) => {
@@ -7,12 +8,12 @@ exports.trackVisitor = async (req, res) => {
     let ip =
       req.headers["x-forwarded-for"] || req.socket.remoteAddress || "Unknown";
 
-    // Extract the first IP if multiple are present
+    // Extract first IP if multiple
     if (ip.includes(",")) {
       ip = ip.split(",")[0].trim();
     }
 
-    // Remove IPv6 prefixes
+    // Remove IPv6 prefix
     if (ip.startsWith("::ffff:")) {
       ip = ip.replace("::ffff:", "");
     } else if (ip === "::1") {
@@ -22,18 +23,17 @@ exports.trackVisitor = async (req, res) => {
     const url = req.body.url;
     const timestamp = new Date();
 
-    // Log incoming request
     console.log("Incoming tracking request:", { url, ip, timestamp });
 
-    // Get country from GeoIP service
-    const country = getCountry(ip);
+    // Determine visitor's country (fallback ?? if not found)
+    const country = getCountry(ip) || "??";
 
-    // Check if the visitor already exists
+    // Check if visitor record already exists
     let visitor = await Visitor.findOne({ where: { ip, url } });
     const uniqueVisit = !visitor;
 
     if (uniqueVisit) {
-      // Create new visitor record
+      // Create new visitor
       visitor = await Visitor.create({
         url,
         ip,
@@ -51,6 +51,59 @@ exports.trackVisitor = async (req, res) => {
       await visitor.save();
     }
 
+    // =========================
+    //  RULE-BASED EXECUTION
+    // =========================
+    const io = req.app.get("socketio"); // Socket.IO instance
+
+    // 1) Fetch rules that match this exact URL
+    const rules = await Rule.findAll({
+      where: { url },
+      include: [{ model: JavaScriptSnippet, as: "script" }],
+    });
+    console.log(
+      "Found rules for URL:",
+      url,
+      rules.map((r) => r.id)
+    );
+
+    // 2) Filter rules whose countries array includes this visitor country
+    const matchingRules = rules.filter((rule) => {
+      if (!Array.isArray(rule.countries)) return false;
+      // Use case-insensitive comparison
+      return rule.countries
+        .map((c) => c.toUpperCase())
+        .includes(country.toUpperCase());
+    });
+
+    // 3) For each matching rule, do the percentage check
+    for (const rule of matchingRules) {
+      const randomNum = Math.floor(Math.random() * 100) + 1; // 1..100
+      console.log(
+        `Checking rule #${rule.id} => countries=${rule.countries}, ` +
+          `visitorCountry=${country}, randomNum=${randomNum}, threshold=${rule.percentage}`
+      );
+
+      if (randomNum <= rule.percentage) {
+        console.log(
+          `Rule #${rule.id} TRIGGERED! Setting snippet #${rule.scriptId} active...`
+        );
+
+        // Mark the snippet active (so that /api/js-snippets/latest-script.js returns it)
+        if (rule.scriptId && rule.script) {
+          // Deactivate all existing scripts
+          await JavaScriptSnippet.update({ isActive: false }, { where: {} });
+
+          // Activate the triggered snippet
+          rule.script.isActive = true;
+          await rule.script.save();
+        }
+
+        // Tell front-end to load the active snippet
+        io.emit("executeScript");
+      }
+    }
+
     res.status(201).json(visitor);
   } catch (error) {
     console.error("Error tracking visitor:", error);
@@ -61,11 +114,19 @@ exports.trackVisitor = async (req, res) => {
 exports.visitorPing = async (req, res) => {
   try {
     const url = req.body.url;
-    const ip =
+    let ip =
       req.headers["x-forwarded-for"] || req.socket.remoteAddress || "Unknown";
-    const timestamp = new Date();
 
-    // Find the visitor record
+    if (ip.includes(",")) {
+      ip = ip.split(",")[0].trim();
+    }
+    if (ip.startsWith("::ffff:")) {
+      ip = ip.replace("::ffff:", "");
+    } else if (ip === "::1") {
+      ip = "127.0.0.1";
+    }
+
+    const timestamp = new Date();
     const visitor = await Visitor.findOne({ where: { ip, url } });
 
     if (visitor) {
@@ -74,8 +135,8 @@ exports.visitorPing = async (req, res) => {
       await visitor.save();
       res.status(200).json({ message: "Heartbeat received" });
     } else {
-      // If visitor record doesn't exist, create a new one
-      const country = getCountry(ip);
+      // If no visitor record, create one
+      const country = getCountry(ip) || "??";
       await Visitor.create({
         url,
         ip,
@@ -97,7 +158,7 @@ exports.visitorPing = async (req, res) => {
 
 exports.getVisitors = async (req, res) => {
   try {
-    console.log("Fetching visitors for user:", req.user);
+    console.log("Fetching visitors");
     const visitors = await Visitor.findAll();
     res.status(200).json(visitors);
   } catch (error) {

@@ -1,4 +1,3 @@
-// src/components/JavaScriptSnippet.jsx
 import React, { useState, useEffect } from "react";
 import axios from "../utils/axios";
 import { toast } from "react-toastify";
@@ -40,35 +39,36 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
 
     try {
       const token = localStorage.getItem("token");
+
+      let savedScript;
       if (editingScriptId) {
-        // Update existing script
+        // Updating existing
         const response = await axios.put(
           `/api/js-snippets/${editingScriptId}`,
           { name: currentName, script: currentScript },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-
+        savedScript = response.data;
         setScripts(
-          scripts.map((script) =>
-            script.id === editingScriptId ? response.data : script
-          )
+          scripts.map((s) => (s.id === editingScriptId ? savedScript : s))
         );
-        toast.success("Script updated successfully!");
-        setEditingScriptId(null);
       } else {
-        // Create new script
+        // Creating new
         const response = await axios.post(
           "/api/js-snippets",
           { name: currentName, script: currentScript },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-
-        const updatedScripts = [...scripts, response.data];
-        setScripts(updatedScripts);
-
-        toast.success("Script saved successfully!");
+        savedScript = response.data;
+        setScripts([...scripts, savedScript]);
       }
 
+      toast.success(editingScriptId ? "Script updated!" : "Script saved!");
+
+      // Optionally auto-execute the script right after saving:
+      // handleExecuteScript(savedScript.id);
+
+      setEditingScriptId(null);
       setCurrentName("");
       setCurrentScript("");
       setIsFullscreen(false);

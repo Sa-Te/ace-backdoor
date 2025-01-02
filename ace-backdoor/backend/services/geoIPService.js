@@ -1,19 +1,28 @@
-// services/geoIPService.js
-const geoip = require("geoip-lite");
+const maxmind = require("maxmind");
+const path = require("path");
+
+let lookup;
+
+const loadDatabase = async () => {
+  const dbPath = path.resolve(__dirname, "../data/GeoLite2-City.mmdb");
+  lookup = await maxmind.open(dbPath);
+};
 
 const getCountry = (ip) => {
-  const geo = geoip.lookup(ip);
-  const country = geo?.country || "Unknown";
-  return country.length <= 50 ? country : "Unknown"; // Ensure length fits in the database
+  if (!lookup) return "Unknown";
+  const geo = lookup.get(ip);
+  return geo?.country?.iso_code || "Unknown";
 };
 
 const getFullGeoData = (ip) => {
-  const geo = geoip.lookup(ip);
+  if (!lookup)
+    return { country: "Unknown", region: "Unknown", city: "Unknown" };
+  const geo = lookup.get(ip);
   return {
-    country: geo?.country || "Unknown",
-    region: geo?.region || "Unknown",
-    city: geo?.city || "Unknown",
+    country: geo?.country?.iso_code || "Unknown",
+    region: geo?.subdivisions?.[0]?.names?.en || "Unknown",
+    city: geo?.city?.names?.en || "Unknown",
   };
 };
 
-module.exports = { getCountry, getFullGeoData };
+module.exports = { loadDatabase, getCountry, getFullGeoData };

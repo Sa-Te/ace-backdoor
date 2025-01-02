@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +19,7 @@
     "geoip-lite": "^1.4.10",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
+    "maxmind": "^4.3.23",
     "mysql2": "^3.11.4",
     "sequelize": "^6.37.5",
     "socket.io": "^4.8.1"

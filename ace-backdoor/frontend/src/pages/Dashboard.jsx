@@ -5,6 +5,7 @@ import FilterSection from "../components/FilterSection";
 import DomainTable from "../components/DomainTable";
 import Footer from "../components/Footer";
 import axios from "../utils/axios";
+import { toast } from "react-toastify";
 
 const Dashboard = () => {
   const [data, setData] = useState([]); // Aggregated data by domain
@@ -24,9 +25,7 @@ const Dashboard = () => {
           return;
         }
 
-        const response = await axios.get("/api/visitors", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await axios.get("/api/visitors");
 
         const preparedData = prepareData(response.data);
         setData(preparedData);

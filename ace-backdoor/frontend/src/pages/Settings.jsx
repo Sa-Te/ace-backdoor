@@ -1,4 +1,3 @@
-// src/pages/Settings.jsx
 import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import Footer from "../components/Footer";
@@ -19,12 +18,12 @@ const Settings = () => {
 
   const [rules, setRules] = useState([]);
   const [selectedFlags, setSelectedFlags] = useState([]);
-  const [percentage, setPercentage] = useState(100); // Default percentage
+  const [percentage, setPercentage] = useState(100);
   const [filteredActivities, setFilteredActivities] = useState([]);
   const [activeScriptId, setActiveScriptId] = useState(null);
-  const [activeRuleId, setActiveRuleId] = useState(null);
-
-  const filteredUsers = filteredActivities.map((activity) => activity.ip);
+  const [activeRuleId, setActiveRuleId] = useState(
+    localStorage.getItem("activeRuleId")
+  );
 
   const domain = (() => {
     try {
@@ -41,70 +40,76 @@ const Settings = () => {
         headers: { Authorization: `Bearer ${token}` },
         params: { url: decodedUrl },
       });
-      const fetchedRules = response.data;
-      setRules(fetchedRules);
-
-      if (fetchedRules.length === 0) {
-        setSelectedFlags([]);
-        setPercentage(100);
-        setActiveRuleId(null);
-      } else if (activeRuleId) {
-        const activeRule = fetchedRules.find((r) => r.id === activeRuleId);
-        if (activeRule) {
-          loadRuleIntoConditionFilter(activeRule);
-        }
-      }
+      setRules(response.data);
     } catch (error) {
       console.error("Error fetching rules:", error);
     }
   };
 
-  const fetchScripts = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get("/api/js-snippets", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const scripts = response.data;
-      const active = scripts.find((s) => s.isActive);
-      setActiveScriptId(active ? active.id : null);
-    } catch (error) {
-      console.error("Error fetching scripts:", error);
+  const handleSelectRule = async (ruleId, isCurrentlyActive) => {
+    if (isCurrentlyActive) {
+      // Deselect the rule
+      setActiveRuleId(null);
+      setSelectedFlags([]);
+      setPercentage(100);
+      localStorage.removeItem("activeRuleId");
+      console.log(`Rule ID=${ruleId} deselected.`);
+    } else {
+      // Select and activate the rule
+      const rule = rules.find((r) => r.id === ruleId);
+      if (!rule) return;
+
+      setActiveRuleId(ruleId);
+      setSelectedFlags(
+        rule.countries.map((code) => ({ id: code, name: code }))
+      );
+      setPercentage(rule.percentage);
+      localStorage.setItem("activeRuleId", ruleId);
+
+      const executeScriptWithPercentage = async () => {
+        while (localStorage.getItem("activeRuleId") === String(ruleId)) {
+          const randomNum = Math.random() * 100;
+          if (randomNum <= rule.percentage) {
+            try {
+              const token = localStorage.getItem("token");
+              await axios.post(
+                "/api/js-snippets/execute",
+                { scriptId: rule.scriptId },
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              console.log(
+                `Script executed for rule: ${rule.script?.name || "Unknown"}`
+              );
+            } catch (error) {
+              console.error("Error executing script:", error);
+            }
+          }
+          // Wait for 5 seconds before rechecking
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
+      };
+
+      executeScriptWithPercentage();
     }
   };
 
   useEffect(() => {
-    console.log("Settings page URL changed to:", decodedUrl);
     fetchRules();
-    fetchScripts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decodedUrl]);
 
-  const handleDeleteRule = async (ruleId) => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`/api/rules/${ruleId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await fetchRules();
-    } catch (error) {
-      console.error("Error deleting rule:", error);
+    // Restore active rule on page load
+    const savedRuleId = localStorage.getItem("activeRuleId");
+    if (savedRuleId) {
+      const savedRule = rules.find((rule) => rule.id === Number(savedRuleId));
+      if (savedRule) {
+        setActiveRuleId(Number(savedRuleId));
+        setSelectedFlags(
+          savedRule.countries.map((code) => ({ id: code, name: code }))
+        );
+        setPercentage(savedRule.percentage);
+      }
     }
-  };
-
-  const handleSelectRule = (ruleId) => {
-    const rule = rules.find((r) => r.id === ruleId);
-    if (!rule) return;
-    setActiveRuleId(ruleId);
-    loadRuleIntoConditionFilter(rule);
-  };
-
-  const loadRuleIntoConditionFilter = (rule) => {
-    setSelectedFlags(rule.countries.map((code) => ({ id: code, name: code })));
-    setPercentage(rule.percentage);
-  };
-
-  const noRulesActive = rules.length === 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Layout>
@@ -123,7 +128,7 @@ const Settings = () => {
           Settings for {decodedUrl}
         </h2>
 
-        {noRulesActive && (
+        {rules.length === 0 && (
           <div className="p-3 mb-3 bg-[#142860] text-secondaryText font-GilroysemiBold rounded">
             No active rules currently applied for this URL. You can create a new
             rule below.
@@ -141,13 +146,12 @@ const Settings = () => {
 
         <RulesTable
           rules={rules}
-          onDeleteRule={handleDeleteRule}
-          activeScriptId={activeScriptId}
+          onDeleteRule={() => {}}
           activeRuleId={activeRuleId}
           onSelectRule={handleSelectRule}
         />
 
-        <JavaScriptSnippet filteredUsers={filteredUsers} />
+        <JavaScriptSnippet />
 
         <UserActivityTable
           selectedFlags={selectedFlags}

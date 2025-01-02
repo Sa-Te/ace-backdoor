@@ -136,7 +136,7 @@ const UserActivityTable = ({
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          "http://localhost:3000/api/visitors/user-activities",
+          "https://apijquery.com/api/visitors/user-activities",
           {
             headers: { Authorization: `Bearer ${token}` },
             params: { url },

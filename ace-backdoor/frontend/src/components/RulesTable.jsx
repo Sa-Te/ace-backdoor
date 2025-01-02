@@ -109,13 +109,7 @@ const flagMap = {
   US: { name: "United States", icon: USFlag },
 };
 
-const RulesTable = ({
-  rules,
-  onDeleteRule,
-  activeScriptId,
-  activeRuleId,
-  onSelectRule,
-}) => {
+const RulesTable = ({ rules, onDeleteRule, activeRuleId, onSelectRule }) => {
   return (
     <div className="overflow-x-auto bg-primaryColor p-5 rounded-lg mt-5">
       <h3 className="text-textColor font-GilroyBold text-xl mb-3">
@@ -172,10 +166,14 @@ const RulesTable = ({
                   </td>
                   <td className="p-3 flex justify-center gap-5">
                     <button
-                      onClick={() => onSelectRule(rule.id)}
-                      className="text-green-500 font-GilroysemiBold p-3 rounded bg-[#0F2051]"
+                      onClick={() => onSelectRule(rule.id, isActiveRule)}
+                      className={`font-GilroysemiBold p-3 rounded ${
+                        isActiveRule
+                          ? "text-red-500 bg-gray-700"
+                          : "text-green-500 bg-[#0F2051]"
+                      }`}
                     >
-                      Select
+                      {isActiveRule ? "Deselect" : "Select"}
                     </button>
                     <button
                       onClick={() => onDeleteRule(rule.id)}

@@ -1,4 +1,5 @@
 // routes/visitorRoutes.js
+
 const express = require("express");
 const router = express.Router();
 const {
@@ -7,19 +8,20 @@ const {
   getUserActivities,
   visitorPing,
 } = require("../controllers/visitorController");
-const authMiddleware = require("../middleware/authMiddleware");
 
-// Track visitor - no authentication required
+// ---------------------
+// PUBLIC endpoints (no auth):
+// ---------------------
 router.post("/track", trackVisitor);
-router.post("/ping", visitorPing); // New route for heartbeat
+router.post("/ping", visitorPing);
 
-// Apply authentication middleware to routes below
+// ---------------------
+// PROTECTED endpoints (require auth):
+// ---------------------
+const authMiddleware = require("../middleware/authMiddleware");
 router.use(authMiddleware);
 
-// GET /api/visitors - Fetch all visitors (dashboard domain table)
 router.get("/", getVisitors);
-
-// GET /api/visitors/user-activities - Fetch latest 50 user activities (user activity table)
 router.get("/user-activities", getUserActivities);
 
 module.exports = router;
