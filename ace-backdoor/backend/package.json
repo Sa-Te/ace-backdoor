@@ -22,9 +22,11 @@
     "maxmind": "^4.3.23",
     "mysql2": "^3.11.4",
     "sequelize": "^6.37.5",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
+    "javascript-obfuscator": "^4.1.1",
     "nodemon": "^3.1.7",
     "sequelize-cli": "^6.6.2"
   }

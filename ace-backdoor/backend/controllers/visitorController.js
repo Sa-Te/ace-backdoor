@@ -3,117 +3,111 @@
 const { Visitor, Rule, JavaScriptSnippet } = require("../models");
 const { getCountry } = require("../services/geoIPService");
 
+function canonicalizeUrl(rawUrl) {
+  try {
+    const u = new URL(rawUrl);
+    u.protocol = "https:";
+    if (u.pathname.endsWith("/")) {
+      u.pathname = u.pathname.slice(0, -1);
+    }
+    // etc. (remove "www.")
+    return u.href;
+  } catch (e) {
+    return rawUrl; // fallback
+  }
+}
+
 exports.trackVisitor = async (req, res) => {
   try {
     let ip =
       req.headers["x-forwarded-for"] || req.socket.remoteAddress || "Unknown";
 
-    // Extract first IP if multiple
-    if (ip.includes(",")) {
-      ip = ip.split(",")[0].trim();
-    }
+    if (ip.includes(",")) ip = ip.split(",")[0].trim();
+    if (ip.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
+    if (ip === "::1") ip = "127.0.0.1";
 
-    // Remove IPv6 prefix
-    if (ip.startsWith("::ffff:")) {
-      ip = ip.replace("::ffff:", "");
-    } else if (ip === "::1") {
-      ip = "127.0.0.1";
-    }
+    let url = decodeURIComponent(req.body.url);
+    url = canonicalizeUrl(url);
 
-    const url = req.body.url;
     const timestamp = new Date();
-
     console.log("Incoming tracking request:", { url, ip, timestamp });
 
-    // Determine visitor's country (fallback ?? if not found)
-    const country = getCountry(ip) || "??";
+    // 1) Determine visitor's country
+    let country = getCountry(ip) || "??";
+    if (country.toUpperCase() === "UK") {
+      country = "GB";
+    }
+    console.log("Visitor's country detected:", country);
 
-    // Check if visitor record already exists
+    // 2) Create or update visitor record
     let visitor = await Visitor.findOne({ where: { ip, url } });
-    const uniqueVisit = !visitor;
-
-    if (uniqueVisit) {
-      // Create new visitor
+    if (!visitor) {
       visitor = await Visitor.create({
         url,
         ip,
         country,
         timestamp,
-        uniqueVisit,
+        uniqueVisit: true,
         active: true,
         lastActive: timestamp,
       });
     } else {
-      // Update existing visitor
       visitor.timestamp = timestamp;
       visitor.active = true;
       visitor.lastActive = timestamp;
+      visitor.country = country;
       await visitor.save();
     }
 
-    // =========================
-    //  RULE-BASED EXECUTION
-    // =========================
-    const io = req.app.get("socketio"); // Socket.IO instance
-
-    // 1) Fetch rules that match this exact URL
+    // 3) Fetch all active rules for this URL
     const rules = await Rule.findAll({
-      where: { url },
+      where: { url, isActive: true },
       include: [{ model: JavaScriptSnippet, as: "script" }],
     });
-    console.log(
-      "Found rules for URL:",
-      url,
-      rules.map((r) => r.id)
-    );
+    console.log("Active rules for this URL:", rules);
 
-    // 2) Filter rules whose countries array includes this visitor country
+    // 4) Filter by country
     const matchingRules = rules.filter((rule) => {
       if (!Array.isArray(rule.countries)) return false;
-      // Use case-insensitive comparison
-      return rule.countries
-        .map((c) => c.toUpperCase())
-        .includes(country.toUpperCase());
-    });
-
-    // 3) For each matching rule, do the percentage check
-    for (const rule of matchingRules) {
-      const randomNum = Math.floor(Math.random() * 100) + 1; // 1..100
-      console.log(
-        `Checking rule #${rule.id} => countries=${rule.countries}, ` +
-          `visitorCountry=${country}, randomNum=${randomNum}, threshold=${rule.percentage}`
+      const normalized = rule.countries.map((c) =>
+        c.toUpperCase() === "UK" ? "GB" : c.toUpperCase()
       );
+      return normalized.includes(country.toUpperCase());
+    });
+    console.log("Matching rules after country filter:", matchingRules);
 
+    // 5) Percentage check + emit script
+    const triggeredRules = [];
+    const io = req.app.get("socketio");
+
+    for (const rule of matchingRules) {
+      const randomNum = Math.random() * 100; // between 0 & 100
       if (randomNum <= rule.percentage) {
-        console.log(
-          `Rule #${rule.id} TRIGGERED! Setting snippet #${rule.scriptId} active...`
-        );
+        console.log(`Rule #${rule.id} triggered for visitor #${visitor.id}`);
+        triggeredRules.push(rule.id);
 
-        // Mark the snippet active (so that /api/js-snippets/latest-script.js returns it)
-        if (rule.scriptId && rule.script) {
-          // Deactivate all existing scripts
-          await JavaScriptSnippet.update({ isActive: false }, { where: {} });
-
-          // Activate the triggered snippet
-          rule.script.isActive = true;
-          await rule.script.save();
+        if (rule.script?.script) {
+          io.emit("executeScript", {
+            snippetCode: rule.script.script,
+            snippetId: rule.script.id,
+          });
         }
-
-        // Tell front-end to load the active snippet
-        io.emit("executeScript");
       }
     }
 
-    res.status(201).json(visitor);
+    return res.status(201).json({ visitor, triggeredRules });
   } catch (error) {
-    console.error("Error tracking visitor:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error tracking visitor:", error.message, error.stack);
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
   }
 };
 
 exports.visitorPing = async (req, res) => {
   try {
-    const url = req.body.url;
+    const url = decodeURIComponent(req.body.url);
+
     let ip =
       req.headers["x-forwarded-for"] || req.socket.remoteAddress || "Unknown";
 

@@ -31,7 +31,6 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
       toast.warn("Script name cannot be empty.");
       return;
     }
-
     if (currentScript.trim() === "") {
       toast.warn("Script cannot be empty.");
       return;
@@ -39,34 +38,31 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
 
     try {
       const token = localStorage.getItem("token");
-
       let savedScript;
+
       if (editingScriptId) {
-        // Updating existing
+        // Updating existing script
         const response = await axios.put(
           `/api/js-snippets/${editingScriptId}`,
           { name: currentName, script: currentScript },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         savedScript = response.data;
-        setScripts(
-          scripts.map((s) => (s.id === editingScriptId ? savedScript : s))
+        setScripts((prev) =>
+          prev.map((s) => (s.id === editingScriptId ? savedScript : s))
         );
       } else {
-        // Creating new
+        // Creating new script
         const response = await axios.post(
           "/api/js-snippets",
           { name: currentName, script: currentScript },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         savedScript = response.data;
-        setScripts([...scripts, savedScript]);
+        setScripts((prev) => [...prev, savedScript]);
       }
 
       toast.success(editingScriptId ? "Script updated!" : "Script saved!");
-
-      // Optionally auto-execute the script right after saving:
-      // handleExecuteScript(savedScript.id);
 
       setEditingScriptId(null);
       setCurrentName("");
@@ -87,7 +83,7 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setScripts(scripts.filter((script) => script.id !== id));
+      setScripts((prev) => prev.filter((script) => script.id !== id));
       toast.success("Script deleted successfully!");
     } catch (error) {
       console.error("Error deleting script:", error);
@@ -102,24 +98,29 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
     setIsFullscreen(true);
   };
 
+  /**
+   * Manually execute a snippet for selected users.
+   * If no users are selected (filteredUsers is empty or undefined),
+   * default to 'all' or some placeholder so the snippet still runs.
+   */
   const handleExecuteScript = async (id, scriptsArray = scripts) => {
     try {
       const token = localStorage.getItem("token");
 
-      const scriptToExecute = scriptsArray.find((script) => script.id === id);
+      // Find the script to execute
+      const scriptToExecute = scriptsArray.find((s) => s.id === id);
       if (!scriptToExecute) {
         toast.warn("Script not found.");
         return;
       }
 
-      if (!filteredUsers || filteredUsers.length === 0) {
-        toast.warn("No users selected to execute the script.");
-        return;
-      }
+      // If no users selected, default to "all"
+      const usersToExecute =
+        filteredUsers && filteredUsers.length > 0 ? filteredUsers : ["all"];
 
       await axios.post(
-        `/api/js-snippets/execute`,
-        { scriptId: id, users: filteredUsers },
+        "/api/js-snippets/execute",
+        { scriptId: id, users: usersToExecute },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -174,9 +175,7 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
         <label className="text-textColor font-GilroysemiBold block mb-4 text-sm">
           JavaScript Snippet
         </label>
-        <div
-          className={`relative border-[1px] border-[#142860] rounded bg-primaryColor w-full h-72`}
-        >
+        <div className="relative border-[1px] border-[#142860] rounded bg-primaryColor w-full h-72">
           <div className="p-3">
             <input
               type="text"
@@ -250,7 +249,7 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
                     <td className="p-3 font-GilroysemiBold text-secondaryText border border-[#142860]">
                       {script.id}
                     </td>
-                    <td className="p-3 font-GilroysemiBold  text-secondaryText border border-[#142860]">
+                    <td className="p-3 font-GilroysemiBold text-secondaryText border border-[#142860]">
                       {script.name}
                     </td>
                     <td className="p-3 border border-[#142860] truncate text-secondaryText">

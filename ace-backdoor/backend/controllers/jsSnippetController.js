@@ -47,7 +47,10 @@ exports.executeScript = async (req, res) => {
 
     // Emit to all clients so they can fetch the new "active" script
     const io = req.app.get("socketio");
-    io.emit("executeScript");
+    io.emit("executeScript", {
+      snippetCode: script.script, // Correct variable here
+      snippetId: script.id, // Correct variable here
+    });
 
     res.json({ message: "Script set to execute." });
   } catch (error) {

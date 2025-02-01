@@ -41,17 +41,41 @@ const Dashboard = () => {
     fetchVisitors();
   }, []);
 
-  const prepareData = (rawData) => {
-    const normalizeUrl = (url) => {
-      try {
-        return new URL(url).href; // Valid URL
-      } catch {
-        return `http://${url}`; // Add http:// if missing
-      }
-    };
+  function canonicalizeUrl(rawUrl) {
+    try {
+      const u = new URL(rawUrl);
 
-    return rawData.reduce((acc, visitor) => {
-      const normalizedUrl = normalizeUrl(visitor.url);
+      // 1) Force protocol to https if you want everything consistent:
+      // (Optional; comment out if you don't want to override)
+      u.protocol = "https:";
+
+      // 2) Remove a trailing slash if present (so /index.html/ becomes /index.html)
+      if (u.pathname.endsWith("/")) {
+        u.pathname = u.pathname.slice(0, -1);
+      }
+
+      // 3) Example: also remove “www.” if you don’t want that distinct
+      if (u.hostname.startsWith("www.")) {
+        u.hostname = u.hostname.replace("www.", "");
+      }
+
+      return u.href;
+    } catch (e) {
+      // If it's not a valid URL, fallback
+      return `https://${rawUrl.replace(/\/+$/, "")}`; // remove trailing slash
+    }
+  }
+
+  const prepareData = (rawData) => {
+    // First, filter out any visitors whose URL contains "/settings/"
+    // (or whatever pattern you consider "admin" routes).
+    const filteredRawData = rawData.filter((visitor) => {
+      return !visitor.url.includes("/settings/");
+    });
+
+    // Then, do your existing reduce logic on the *filtered* array.
+    return filteredRawData.reduce((acc, visitor) => {
+      const normalizedUrl = canonicalizeUrl(visitor.url);
       let domain;
       try {
         domain = new URL(normalizedUrl).hostname;

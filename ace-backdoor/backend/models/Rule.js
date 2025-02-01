@@ -1,3 +1,4 @@
+// models/Rule.js
 const { DataTypes } = require("sequelize");
 
 module.exports = (sequelize) => {
@@ -29,21 +30,29 @@ module.exports = (sequelize) => {
       },
       scriptId: {
         type: DataTypes.INTEGER,
-        allowNull: true, // If a script must always be selected
+        allowNull: true,
         references: {
-          model: "JavaScriptSnippets", // must match the table name defined in JavaScriptSnippet model
+          model: "JavaScriptSnippets",
           key: "id",
         },
+      },
+      /**
+       * NEW FIELD:
+       * isActive determines whether the rule is currently active or not.
+       */
+      isActive: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
       },
     },
     {
       tableName: "Rules",
-      freezeTableName: true, // prevents Sequelize from pluralizing the table name
+      freezeTableName: true,
     }
   );
 
   Rule.associate = (models) => {
-    // Associate Rule with JavaScriptSnippet
     Rule.belongsTo(models.JavaScriptSnippet, {
       foreignKey: "scriptId",
       as: "script",

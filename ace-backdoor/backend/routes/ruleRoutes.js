@@ -7,8 +7,12 @@ const {
   createRule,
   updateRule,
   deleteRule,
+  getMatchingRules,
 } = require("../controllers/ruleController");
 const authMiddleware = require("../middleware/authMiddleware");
+
+// Public route (no auth needed) for the test site to pull
+router.get("/matching", getMatchingRules);
 
 // Protect these routes with auth
 router.use(authMiddleware);

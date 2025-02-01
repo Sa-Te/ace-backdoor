@@ -109,7 +109,10 @@ const flagMap = {
   US: { name: "United States", icon: USFlag },
 };
 
-const RulesTable = ({ rules, onDeleteRule, activeRuleId, onSelectRule }) => {
+const RulesTable = ({ rules, onDeleteRule, onRuleToggled }) => {
+  // We expect a function `onRuleToggled(ruleId, newActiveValue)` from parent,
+  // which calls the API to update isActive.
+
   return (
     <div className="overflow-x-auto bg-primaryColor p-5 rounded-lg mt-5">
       <h3 className="text-textColor font-GilroyBold text-xl mb-3">
@@ -121,17 +124,18 @@ const RulesTable = ({ rules, onDeleteRule, activeRuleId, onSelectRule }) => {
             <th className="p-3 font-GilroysemiBold">Countries</th>
             <th className="p-3 font-GilroysemiBold">Percentage</th>
             <th className="p-3 font-GilroysemiBold">Script</th>
+            <th className="p-3 font-GilroysemiBold">Status</th>
             <th className="p-3 font-GilroysemiBold">Action</th>
           </tr>
         </thead>
         <tbody className="text-textColor">
           {rules.length > 0 ? (
             rules.map((rule) => {
-              const isActiveRule = activeRuleId === rule.id;
+              const { id, countries, percentage, script, isActive } = rule;
+              const rowClass = isActive ? "bg-green-700" : "";
 
-              // Render countries with flags and full names
-              const countriesDisplay = Array.isArray(rule.countries)
-                ? rule.countries.map((code, i) => {
+              const countriesDisplay = Array.isArray(countries)
+                ? countries.map((code, i) => {
                     const countryObj = flagMap[code];
                     return (
                       <span
@@ -152,31 +156,32 @@ const RulesTable = ({ rules, onDeleteRule, activeRuleId, onSelectRule }) => {
 
               return (
                 <tr
-                  key={rule.id}
-                  className={`border-[1px] border-[#142860] ${
-                    isActiveRule ? "bg-green-700" : ""
-                  }`}
+                  key={id}
+                  className={`border-[1px] border-[#142860] ${rowClass}`}
                 >
-                  <td className="p-3 ">{countriesDisplay}</td>
+                  <td className="p-3">{countriesDisplay}</td>
                   <td className="p-3 font-GilroysemiBold text-secondaryText">
-                    {rule.percentage}%
+                    {percentage}%
                   </td>
                   <td className="p-3 font-GilroysemiBold text-secondaryText">
-                    {rule.script ? rule.script.name : "No Script Selected"}
+                    {script ? script.name : "No Script Selected"}
                   </td>
-                  <td className="p-3 flex justify-center gap-5">
+                  <td className="p-3 font-GilroysemiBold">
+                    {isActive ? "Active" : "Inactive"}
+                  </td>
+                  <td className="p-3 flex justify-center gap-3">
                     <button
-                      onClick={() => onSelectRule(rule.id, isActiveRule)}
+                      onClick={() => onRuleToggled(id, !isActive)}
                       className={`font-GilroysemiBold p-3 rounded ${
-                        isActiveRule
+                        isActive
                           ? "text-red-500 bg-gray-700"
                           : "text-green-500 bg-[#0F2051]"
                       }`}
                     >
-                      {isActiveRule ? "Deselect" : "Select"}
+                      {isActive ? "Deselect" : "Select"}
                     </button>
                     <button
-                      onClick={() => onDeleteRule(rule.id)}
+                      onClick={() => onDeleteRule(id)}
                       className="text-[#F54A4A] font-GilroysemiBold p-3 rounded bg-[#0F2051]"
                     >
                       Delete
@@ -187,7 +192,7 @@ const RulesTable = ({ rules, onDeleteRule, activeRuleId, onSelectRule }) => {
             })
           ) : (
             <tr>
-              <td colSpan="4" className="p-3">
+              <td colSpan="5" className="p-3">
                 No rules applied.
               </td>
             </tr>

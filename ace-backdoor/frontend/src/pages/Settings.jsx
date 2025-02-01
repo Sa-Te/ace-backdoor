@@ -1,3 +1,4 @@
+// src/pages/Settings.jsx
 import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import Footer from "../components/Footer";
@@ -14,16 +15,12 @@ function getFavicon(domain) {
 
 const Settings = () => {
   const { url } = useParams();
-  const decodedUrl = decodeURIComponent(url);
+  const decodedUrl = decodeURIComponent(url).replace("/settings/", "");
 
   const [rules, setRules] = useState([]);
   const [selectedFlags, setSelectedFlags] = useState([]);
   const [percentage, setPercentage] = useState(100);
   const [filteredActivities, setFilteredActivities] = useState([]);
-  const [activeScriptId, setActiveScriptId] = useState(null);
-  const [activeRuleId, setActiveRuleId] = useState(
-    localStorage.getItem("activeRuleId")
-  );
 
   const domain = (() => {
     try {
@@ -33,6 +30,7 @@ const Settings = () => {
     }
   })();
 
+  // Fetch rules
   const fetchRules = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -46,76 +44,54 @@ const Settings = () => {
     }
   };
 
-  const handleSelectRule = async (ruleId, isCurrentlyActive) => {
-    if (isCurrentlyActive) {
-      // Deselect the rule
-      setActiveRuleId(null);
-      setSelectedFlags([]);
-      setPercentage(100);
-      localStorage.removeItem("activeRuleId");
-      console.log(`Rule ID=${ruleId} deselected.`);
-    } else {
-      // Select and activate the rule
-      const rule = rules.find((r) => r.id === ruleId);
-      if (!rule) return;
+  // Delete rule
+  const handleDeleteRule = async (ruleId) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`/api/rules/${ruleId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      fetchRules();
+    } catch (error) {
+      console.error("Error deleting rule:", error);
+    }
+  };
 
-      setActiveRuleId(ruleId);
-      setSelectedFlags(
-        rule.countries.map((code) => ({ id: code, name: code }))
+  // Toggle rule isActive
+  const handleRuleToggled = async (ruleId, newActiveValue) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.put(
+        `/api/rules/${ruleId}`,
+        { isActive: newActiveValue },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      setPercentage(rule.percentage);
-      localStorage.setItem("activeRuleId", ruleId);
+      console.log("Rule updated:", response.data);
 
-      const executeScriptWithPercentage = async () => {
-        while (localStorage.getItem("activeRuleId") === String(ruleId)) {
-          const randomNum = Math.random() * 100;
-          if (randomNum <= rule.percentage) {
-            try {
-              const token = localStorage.getItem("token");
-              await axios.post(
-                "/api/js-snippets/execute",
-                { scriptId: rule.scriptId },
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-              console.log(
-                `Script executed for rule: ${rule.script?.name || "Unknown"}`
-              );
-            } catch (error) {
-              console.error("Error executing script:", error);
-            }
-          }
-          // Wait for 5 seconds before rechecking
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-        }
-      };
+      // Re-fetch rules to update local state
+      fetchRules();
 
-      executeScriptWithPercentage();
+      // Force a re-check of the user’s country + active rules => triggers "executeScript"
+      const trackRes = await axios.post("/api/visitors/track", {
+        url: decodedUrl,
+        timestamp: new Date().toISOString(),
+      });
+      // Log the response data
+      console.log("trackVisitor response =>", trackRes.data);
+    } catch (error) {
+      console.error("Error toggling rule:", error);
     }
   };
 
   useEffect(() => {
     fetchRules();
-
-    // Restore active rule on page load
-    const savedRuleId = localStorage.getItem("activeRuleId");
-    if (savedRuleId) {
-      const savedRule = rules.find((rule) => rule.id === Number(savedRuleId));
-      if (savedRule) {
-        setActiveRuleId(Number(savedRuleId));
-        setSelectedFlags(
-          savedRule.countries.map((code) => ({ id: code, name: code }))
-        );
-        setPercentage(savedRule.percentage);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [decodedUrl]);
 
   return (
     <Layout>
       <div
         id="main__settings__container"
-        className="flex flex-wrap flex-col overflow-x-scroll"
+        className="flex flex-col overflow-x-scroll"
       >
         <h2 className="p-5 text-2xl font-bold text-textColor font-GilroyBold flex items-center gap-5">
           {domain && (
@@ -146,9 +122,8 @@ const Settings = () => {
 
         <RulesTable
           rules={rules}
-          onDeleteRule={() => {}}
-          activeRuleId={activeRuleId}
-          onSelectRule={handleSelectRule}
+          onDeleteRule={handleDeleteRule}
+          onRuleToggled={handleRuleToggled}
         />
 
         <JavaScriptSnippet />

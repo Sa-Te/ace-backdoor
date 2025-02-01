@@ -2,6 +2,7 @@
 
 const express = require("express");
 const app = express();
+
 const cors = require("cors");
 const http = require("http");
 const dotenv = require("dotenv");
@@ -12,19 +13,33 @@ const bcrypt = require("bcrypt");
 const { Op } = require("sequelize");
 const { sequelize, User, Visitor } = require("./models");
 const { loadDatabase } = require("./services/geoIPService");
+const fs = require("fs");
+const util = require("util");
+const logFile = fs.createWriteStream(__dirname + "/debug.log", { flags: "a" }); // Append mode
+const logStdout = process.stdout;
+
+console.log = (message, ...optionalParams) => {
+  const formattedMessage = util.format(message, ...optionalParams);
+  logFile.write(`[LOG]: ${formattedMessage}\n`);
+  logStdout.write(`[LOG]: ${formattedMessage}\n`);
+};
+
+console.error = (message, ...optionalParams) => {
+  const formattedMessage = util.format(message, ...optionalParams);
+  logFile.write(`[ERROR]: ${formattedMessage}\n`);
+  logStdout.write(`[ERROR]: ${formattedMessage}\n`);
+};
 
 // Load .env
 dotenv.config();
 
+app.set("trust proxy", true);
+
 // Middleware
 app.use(
   cors({
-    origin: [
-      "https://apijquery.com",
-      "http://localhost:5173",
-      "http://localhost:3000",
-    ],
-    credentials: true,
+    origin: "*", // Allow all origins
+    credentials: false, // Disable credentials for "origin: *"
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -41,6 +56,7 @@ app.use(
           "ws://localhost:3000",
           "http://localhost:3000",
           "https://apijquery.com",
+          "wss://apijquery.com",
         ],
         imgSrc: ["'self'", "data:", "*"],
       },
@@ -56,14 +72,24 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = require("socket.io")(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:3000",
-      "https://apijquery.com",
-    ],
+    origin: "*",
     methods: ["GET", "POST"],
-    credentials: true,
+    credentials: false,
   },
+  allowEIO3: true,
+});
+
+// Socket.IO Connection Handling
+io.on("connection", (socket) => {
+  console.log(`New client connected: ${socket.id}`);
+
+  socket.on("disconnect", (reason) => {
+    console.log(`Client disconnected: ${socket.id}, Reason: ${reason}`);
+  });
+
+  socket.on("error", (error) => {
+    console.error(`Socket error from ${socket.id}:`, error);
+  });
 });
 
 // Make IO available to controllers
@@ -87,8 +113,8 @@ const ruleRoutes = require("./routes/ruleRoutes");
 const jsSnippetRoutes = require("./routes/jsSnippetRoutes");
 
 // Assign routes
-app.use("/api/auth", authRoutes);
 app.use("/api/visitors", visitorRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/rules", ruleRoutes);
 app.use("/api/js-snippets", jsSnippetRoutes);
 
