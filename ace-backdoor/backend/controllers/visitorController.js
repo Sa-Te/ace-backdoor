@@ -1,5 +1,3 @@
-// controllers/visitorController.js
-
 const { Visitor, Rule, JavaScriptSnippet } = require("../models");
 const { getCountry } = require("../services/geoIPService");
 

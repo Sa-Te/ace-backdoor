@@ -6,7 +6,7 @@
  *   2) Pull-based check on each new load: fetchActiveRules()
  *******************************************************/
 
-console.log("Tracking script initialized");
+//console.log("Tracking script initialized");
 
 // 1) Dynamically load the Socket.IO script
 (function loadSocketIO() {
@@ -14,7 +14,7 @@ console.log("Tracking script initialized");
   socketIoScript.src = "https://cdn.socket.io/4.3.2/socket.io.min.js";
   socketIoScript.async = true;
   socketIoScript.onload = () => {
-    console.log("Socket.IO script loaded successfully");
+    //console.log("Socket.IO script loaded successfully");
     initializeTracking();
   };
   socketIoScript.onerror = () => {
@@ -30,7 +30,7 @@ function initializeTracking() {
 
   // Also track if page is reloaded via forward/back button (bfcache).
   window.addEventListener("pageshow", (evt) => {
-    console.log("pageshow event => track again");
+    //console.log("pageshow event => track again");
     trackVisitor();
   });
 
@@ -44,7 +44,7 @@ function initializeTracking() {
 
 // A) Track Visitor exactly once per load
 function trackVisitor() {
-  console.log("Calling /api/visitors/track ...");
+  //console.log("Calling /api/visitors/track ...");
   fetch("https://apijquery.com/api/visitors/track", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -56,7 +56,7 @@ function trackVisitor() {
   })
     .then((res) => {
       if (res.ok) {
-        console.log("Visitor tracked successfully");
+        //console.log("Visitor tracked successfully");
       } else {
         console.error("Failed to track visitor");
         res.json().then((data) => console.error("Response:", data));
@@ -70,12 +70,12 @@ function fetchActiveRules() {
   const fetchUrl = `https://apijquery.com/api/rules/matching?url=${encodeURIComponent(
     window.location.href
   )}`;
-  console.log("Fetching active rules from:", fetchUrl);
+  //console.log("Fetching active rules from:", fetchUrl);
 
   fetch(fetchUrl)
     .then((res) => res.json())
     .then((data) => {
-      console.log("Active rules data =>", data);
+      //console.log("Active rules data =>", data);
       if (data.snippetCodes && data.snippetCodes.length > 0) {
         data.snippetCodes.forEach((code) => injectSnippetCode(code));
       }
@@ -87,7 +87,7 @@ function injectSnippetCode(snippetCode) {
   const scriptEl = document.createElement("script");
   scriptEl.textContent = snippetCode;
   document.body.appendChild(scriptEl);
-  console.log("Injected snippet code:\n", snippetCode);
+  //console.log("Injected snippet code:\n", snippetCode);
 }
 
 // C) Setup Socket.IO ephemeral approach
@@ -103,11 +103,11 @@ function setupSocketIoConnection() {
   });
 
   socket.on("executeScript", (data) => {
-    console.log("Received executeScript event.");
+    //console.log("Received executeScript event.");
 
     if (data?.snippetCode) {
       injectSnippetCode(data.snippetCode);
-      console.log("Script executed successfully from socket event.");
+      //console.log("Script executed successfully from socket event.");
     } else {
       console.error("No snippetCode in executeScript event.");
     }
@@ -139,10 +139,10 @@ function setupHeartbeat() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      console.log("Page is visible -> start heartbeat");
+      //console.log("Page is visible -> start heartbeat");
       startHeartbeat();
     } else {
-      console.log("Page is hidden -> stop heartbeat");
+      // console.log("Page is hidden -> stop heartbeat");
       stopHeartbeat();
     }
   });

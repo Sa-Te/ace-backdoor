@@ -8,7 +8,13 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     dialect: "mysql",
-    logging: false, // Disable Sequelize logging for clean output
+    logging: false,
+    pool: {
+      max: 10, // Maximum number of connections in pool
+      min: 2, // Minimum number of connections
+      acquire: 30000, // Timeout before throwing an error
+      idle: 10000, // Connection is released after 10s of inactivity
+    },
   }
 );
 
