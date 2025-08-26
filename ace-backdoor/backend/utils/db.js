@@ -10,17 +10,19 @@ const sequelize = new Sequelize(
     dialect: "mysql",
     logging: false,
     pool: {
-      max: 10, // Maximum number of connections in pool
-      min: 2, // Minimum number of connections
-      acquire: 30000, // Timeout before throwing an error
-      idle: 10000, // Connection is released after 10s of inactivity
+      max: 3, // Lower max connections to avoid hitting limit
+      min: 1,
+      acquire: 10000, // Shorter timeout to prevent blocking
+      idle: 5000, // Close idle connections faster
     },
   }
 );
 
-sequelize
-  .authenticate()
-  .then(() => console.log("Database connection established"))
-  .catch((err) => console.error("Error connecting to the database:", err));
+// Close connections on shutdown
+process.on("SIGINT", async () => {
+  console.log("Closing Sequelize connection...");
+  await sequelize.close();
+  process.exit(0);
+});
 
 module.exports = sequelize;

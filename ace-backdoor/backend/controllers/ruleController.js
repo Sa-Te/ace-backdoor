@@ -1,4 +1,3 @@
-// controllers/ruleController.js
 const { Rule, JavaScriptSnippet } = require("../models");
 const { getCountry } = require("../services/geoIPService");
 

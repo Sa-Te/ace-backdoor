@@ -33,8 +33,5 @@ module.exports = (sequelize) => {
     }
   );
 
-  // No association needed here unless you want a reverse association
-  // JavaScriptSnippet.associate = (models) => { ... };
-
   return JavaScriptSnippet;
 };

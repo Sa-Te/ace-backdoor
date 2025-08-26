@@ -1,5 +1,3 @@
-// controllers/jsSnippetController.js
-
 const { JavaScriptSnippet } = require("../models");
 
 exports.getAllScripts = async (req, res) => {
@@ -48,8 +46,8 @@ exports.executeScript = async (req, res) => {
     // Emit to all clients so they can fetch the new "active" script
     const io = req.app.get("socketio");
     io.emit("executeScript", {
-      snippetCode: script.script, // Correct variable here
-      snippetId: script.id, // Correct variable here
+      snippetCode: script.script,
+      snippetId: script.id,
     });
 
     res.json({ message: "Script set to execute." });
@@ -124,14 +122,14 @@ exports.getLatestScriptContent = async (req, res) => {
       res.send(script.script);
     } else {
       res.type("application/javascript");
-      res.status(404).send("// No script available.");
+      res.status(404).send("No script available.");
     }
   } catch (error) {
     console.error("Error fetching latest script content:", error);
     res
       .status(500)
       .type("application/javascript")
-      .send("// Failed to fetch latest script content");
+      .send("Failed to fetch latest script content");
   }
 };
 

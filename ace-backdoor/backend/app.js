@@ -1,11 +1,8 @@
-// server.js (or app.js if that's your entry file)
-
 const express = require("express");
 const app = express();
 
 const cors = require("cors");
 const http = require("http");
-const dotenv = require("dotenv");
 const path = require("path");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -31,7 +28,7 @@ console.error = (message, ...optionalParams) => {
 };
 
 // Load .env
-dotenv.config();
+require("dotenv").config({ path: "./.env" });
 
 app.set("trust proxy", true);
 
