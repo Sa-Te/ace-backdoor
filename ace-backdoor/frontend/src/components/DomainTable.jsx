@@ -8,6 +8,11 @@ import visitorIcon from "../public/assets/icons/visitorIcon.svg";
 import modifyIcon from "../public/assets/icons/modifyIcon.svg";
 import folderIcon from "../public/assets/icons/folderIcon.svg";
 
+/**
+ * Formats a timestamp into a human-readable "time ago" string.
+ * @param {string} timestamp - The ISO 8601 timestamp string.
+ * @returns {string} A relative time string (e.g., "5 minutes ago").
+ */
 function formatRelativeTime(timestamp) {
   const now = Date.now();
   const diff = now - new Date(timestamp).getTime();
@@ -22,10 +27,20 @@ function formatRelativeTime(timestamp) {
   else return `${days} days ago`;
 }
 
+/**
+ * Generates a URL to fetch a website's favicon using a public Google service.
+ * @param {string} domain - The domain of the website.
+ * @returns {string} The URL for the favicon image.
+ */
 function getFavicon(domain) {
   return `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
 }
 
+/**
+ * @file DomainTable.jsx
+ * @description A React component that displays aggregated visitor statistics grouped by domain.
+ * It features sorting, pagination, and expandable rows to show detailed stats for individual URLs.
+ */
 const DomainTable = ({ data }) => {
   const [expandedRow, setExpandedRow] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -95,6 +110,18 @@ const DomainTable = ({ data }) => {
                 </span>
               </div>
             </th>
+            <th className="p-3 border border-[#142860] bg-primaryColor">
+              <div className="flex items-center justify-center gap-2">
+                <img
+                  src={visitorIcon}
+                  alt="Recent Visitors Icon"
+                  className="w-5 h-5"
+                />
+                <span className="font-GilroysemiBold text-lg">
+                  Visitors (Today)
+                </span>
+              </div>
+            </th>
             <th className="p-3 border border-[#142860] bg-primaryColor"></th>
           </tr>
         </thead>
@@ -133,7 +160,7 @@ const DomainTable = ({ data }) => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleOpen(mainUrl);
+                          handleOpen(row.domain);
                         }}
                         className="flex items-center gap-1 underline text-accentColor font-GilroysemiBold text-sm"
                       >
@@ -164,6 +191,13 @@ const DomainTable = ({ data }) => {
                       {row.uniqueVisitors || 0}
                     </td>
                     <td
+                      className={`p-3 text-[#98B3FF] border font-GilroysemiBold border-[#142860] ${
+                        isExpanded ? "border-b-0" : ""
+                      }`}
+                    >
+                      {row.recentUniqueVisitors || 0}
+                    </td>
+                    <td
                       className={`p-3 border font-GilroysemiBold border-[#142860] ${
                         isExpanded ? "border-b-0" : ""
                       }`}
@@ -178,7 +212,29 @@ const DomainTable = ({ data }) => {
                   {isExpanded &&
                     row.urls.length > 0 &&
                     row.urls.map((subRow, idx) => {
-                      const subDomain = new URL(subRow.url).hostname;
+                      // Safely determine if the URL is a web URL or a local file
+                      let isWebUrl = false;
+                      let displayPath = subRow.url;
+                      let subDomainForIcon = null;
+
+                      try {
+                        const urlObject = new URL(subRow.url);
+                        if (
+                          urlObject.protocol === "http:" ||
+                          urlObject.protocol === "https:"
+                        ) {
+                          isWebUrl = true;
+                          subDomainForIcon = urlObject.hostname;
+                          displayPath = urlObject.pathname; // Show only the path for web URLs
+                        } else if (urlObject.protocol === "file:") {
+                          // For file URLs, show the filename
+                          displayPath = urlObject.pathname.split("/").pop();
+                        }
+                      } catch (e) {
+                        // If URL parsing fails, just display the raw string
+                        displayPath = subRow.url;
+                      }
+
                       const subRowClasses =
                         idx === 0
                           ? "border-t-[2px] border-dashed border-[#142860]"
@@ -189,14 +245,16 @@ const DomainTable = ({ data }) => {
                           key={idx}
                           className={`${subRowClasses} hover:bg-gray-700`}
                         >
-                          {/* For sub-rows: only vertical borders, no bottom border */}
                           <td className="p-3 text-[#98B3FF] font-GilroysemiBold flex items-center justify-center gap-2">
-                            <img
-                              src={getFavicon(subDomain)}
-                              alt="Favicon"
-                              className="w-4 h-4"
-                            />
-                            {new URL(subRow.url).pathname}
+                            {/* Conditionally render the favicon */}
+                            {isWebUrl && subDomainForIcon && (
+                              <img
+                                src={getFavicon(subDomainForIcon)}
+                                alt="Favicon"
+                                className="w-4 h-4"
+                              />
+                            )}
+                            {displayPath}
                           </td>
                           <td className="p-3 border-l border-r border-[#142860] font-GilroysemiBold text-[#98B3FF]">
                             {subRow.lastVisit
@@ -206,8 +264,11 @@ const DomainTable = ({ data }) => {
                           <td className="p-3 text-[#98B3FF] font-GilroysemiBold border-l border-r border-[#142860]">
                             {subRow.visitors || 0}
                           </td>
-                          <td className="p-3 border-l border-r text-[#98B3FF] font-GilroysemiBold border-[#142860]">
+                          <td className="p-3 text-[#98B3FF] font-GilroysemiBold border-l border-r border-[#142860]">
                             {subRow.uniqueVisitors || 0}
+                          </td>
+                          <td className="p-3 text-[#98B3FF] font-GilroysemiBold border-l border-r border-[#142860]">
+                            {subRow.recentUniqueVisitors || 0}
                           </td>
                           <td className="pl-10 border-l border-r border-[#142860] ">
                             <button
@@ -233,7 +294,7 @@ const DomainTable = ({ data }) => {
             })
           ) : (
             <tr>
-              <td colSpan="5" className="p-3 border border-[#142860]">
+              <td colSpan="6" className="p-3 border border-[#142860]">
                 No data available.
               </td>
             </tr>

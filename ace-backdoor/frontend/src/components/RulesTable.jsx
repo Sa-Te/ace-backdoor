@@ -1,6 +1,3 @@
-// src/components/RulesTable.jsx
-import React from "react";
-
 // If you have a separate file for flagMap, import it, e.g.:
 // import { flagMap } from "../utils/flagMap";
 
@@ -109,6 +106,11 @@ const flagMap = {
   US: { name: "United States", icon: USFlag },
 };
 
+/**
+ * @file RulesTable.jsx
+ * @description A component that displays a table of all existing targeting rules for a URL.
+ * It allows for deleting a rule or toggling its active status.
+ */
 const RulesTable = ({ rules, onDeleteRule, onRuleToggled }) => {
   // We expect a function `onRuleToggled(ruleId, newActiveValue)` from parent,
   // which calls the API to update isActive.

@@ -2,6 +2,10 @@ const { Rule, JavaScriptSnippet } = require("../models");
 const { getCountry } = require("../services/geoIPService");
 
 /**
+ * @file Manages the business logic for targeting rules.
+ */
+
+/**
  * Fetch rules based on the provided URL.
  */
 exports.getRules = async (req, res) => {
@@ -24,7 +28,9 @@ exports.getRules = async (req, res) => {
 };
 
 /**
- * Create a new rule.
+ * Creates a new targeting rule.
+ * @param {object} req - Express request object. Body contains rule details.
+ * @param {object} res - Express response object.
  */
 exports.createRule = async (req, res) => {
   const { url, countries, percentage, scriptId } = req.body;
@@ -65,7 +71,9 @@ exports.createRule = async (req, res) => {
 };
 
 /**
- * Update a rule's fields, including toggling isActive.
+ * Updates an existing rule's properties, including its active status.
+ * @param {object} req - Express request object. Params contain rule ID, body contains updates.
+ * @param {object} res - Express response object.
  */
 exports.updateRule = async (req, res) => {
   const ruleId = req.params.id;
@@ -116,7 +124,9 @@ exports.updateRule = async (req, res) => {
 };
 
 /**
- * Delete a rule by ID.
+ * Deletes a rule by its ID.
+ * @param {object} req - Express request object. Params contain rule ID.
+ * @param {object} res - Express response object.
  */
 exports.deleteRule = async (req, res) => {
   const ruleId = req.params.id;
@@ -134,9 +144,10 @@ exports.deleteRule = async (req, res) => {
 };
 
 /**
- * Pull-based approach:
- * Return all active scripts that match the visitor's IP country and percentage check.
- * Called by the test website on every page load.
+ * Retrieves active rules that match a visitor's request criteria (URL, country).
+ * This is a public endpoint called by the tracking script on client websites.
+ * @param {object} req - Express request object. Query contains the visitor's 'url'.
+ * @param {object} res - Express response object.
  */
 exports.getMatchingRules = async (req, res) => {
   try {

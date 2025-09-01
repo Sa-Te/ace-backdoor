@@ -1,10 +1,13 @@
-// src/pages/Login.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../utils/axios";
 import { toast } from "react-toastify";
 import passwordEye from "../public/assets/passwordEye.svg";
 
+/**
+ * @file Login.jsx
+ * @description The login page for the admin panel. Handles user authentication.
+ */
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -26,6 +29,9 @@ const Login = () => {
     }
   };
 
+  /**
+   * Temporarily shows the password when the user clicks and holds the visibility toggle.
+   */
   const handleMouseDown = () => {
     setShowPassword(true);
   };

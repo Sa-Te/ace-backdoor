@@ -1,4 +1,3 @@
-// src/components/ConditionFilter.jsx
 import React, { useState, useRef, useEffect } from "react";
 import axios from "../utils/axios";
 import { toast } from "react-toastify";
@@ -54,6 +53,7 @@ import UAEFlag from "../public/assets/UAEFlag.svg";
 import UKFlag from "../public/assets/UKFlag.svg";
 import USFlag from "../public/assets/USFlag.svg";
 
+// A mapping of country codes to their names and flag icons for the UI.
 const flagMap = {
   AD: { name: "Andorra", icon: AndorraFlag },
   AW: { name: "Aruba", icon: ArubaFlag },
@@ -107,6 +107,11 @@ const flagMap = {
   US: { name: "United States", icon: USFlag },
 };
 
+/**
+ * @file ConditionFilter.jsx
+ * @description A component that allows users to create and save targeting rules for a specific URL.
+ * It includes a country selector, a percentage slider, and a script selector.
+ */
 const ConditionFilter = ({
   url,
   fetchRules,
@@ -136,6 +141,10 @@ const ConditionFilter = ({
     fetchScripts();
   }, []);
 
+  /**
+   * Handles user input for country codes.
+   * Allows for comma-separated values for bulk adding.
+   */
   const handleInputChange = (e) => {
     const value = e.target.value;
     if (value.includes(",")) {
@@ -150,6 +159,10 @@ const ConditionFilter = ({
     }
   };
 
+  /**
+   * Adds a country to the selected list based on its two-letter ISO code.
+   * @param {string} code - The country code (e.g., "US").
+   */
   const addCountryByCode = (code) => {
     const countryObj = flagMap[code];
     if (!selectedFlags.find((flag) => flag.id === code)) {
@@ -164,6 +177,10 @@ const ConditionFilter = ({
     }
   };
 
+  /**
+   * Removes a country from the list of selected flags.
+   * @param {string} flagId - The ID of the flag to remove.
+   */
   const handleRemoveFlag = (flagId) => {
     setSelectedFlags(selectedFlags.filter((flag) => flag.id !== flagId));
   };
@@ -172,6 +189,9 @@ const ConditionFilter = ({
     setPercentage(parseInt(e.target.value, 10));
   };
 
+  /**
+   * Handles the 'Enter' key press to add a country from the input field.
+   */
   const handleInputKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -183,6 +203,9 @@ const ConditionFilter = ({
     }
   };
 
+  /**
+   * Saves the current selections as a new rule via an API call.
+   */
   const handleSaveRule = async () => {
     if (!url) {
       toast.warn("No URL is selected.");

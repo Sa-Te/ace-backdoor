@@ -2,6 +2,11 @@ import React, { useState, useEffect } from "react";
 import axios from "../utils/axios";
 import { toast } from "react-toastify";
 
+/**
+ * @file JavaScriptSnippet.jsx
+ * @description A component for creating, editing, viewing, and deleting custom JavaScript snippets.
+ * It features a text editor with a fullscreen mode and a table listing all saved scripts.
+ */
 const JavaScriptSnippet = ({ filteredUsers }) => {
   const [scripts, setScripts] = useState([]);
   const [currentName, setCurrentName] = useState("");
@@ -26,6 +31,10 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
     fetchScripts();
   }, []);
 
+  /**
+   * Handles both creating a new script and updating an existing one.
+   * It checks if an `editingScriptId` is set to determine which API call to make.
+   */
   const handleSaveScript = async () => {
     if (currentName.trim() === "") {
       toast.warn("Script name cannot be empty.");
@@ -74,6 +83,10 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
     }
   };
 
+  /**
+   * Deletes a script after a user confirmation.
+   * @param {number} id - The ID of the script to be deleted.
+   */
   const handleDeleteScript = async (id) => {
     if (!window.confirm("Are you sure you want to delete this script?")) return;
 
@@ -91,6 +104,11 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
     }
   };
 
+  /**
+   * Sets the component's state to "edit mode" for a specific script.
+   * Populates the input fields with the script's data and enters fullscreen.
+   * @param {object} script - The script object to be edited.
+   */
   const handleEditScript = (script) => {
     setEditingScriptId(script.id);
     setCurrentName(script.name);
@@ -99,9 +117,8 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
   };
 
   /**
-   * Manually execute a snippet for selected users.
-   * If no users are selected (filteredUsers is empty or undefined),
-   * default to 'all' or some placeholder so the snippet still runs.
+   * Triggers the execution of a script via the backend.
+   * @param {number} id - The ID of the script to execute.
    */
   const handleExecuteScript = async (id, scriptsArray = scripts) => {
     try {
@@ -131,6 +148,10 @@ const JavaScriptSnippet = ({ filteredUsers }) => {
     }
   };
 
+  /**
+   * Resets the component's state to exit the fullscreen editor mode
+   * and clears any temporary data.
+   */
   const handleCloseFullscreen = () => {
     setIsFullscreen(false);
     setEditingScriptId(null);

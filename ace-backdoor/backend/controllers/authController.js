@@ -2,6 +2,16 @@ const bcrypt = require("bcrypt");
 const { User } = require("../models/index.js");
 const { generateToken } = require("../utils/jwtUtils");
 
+/**
+ * @file Handles user authentication.
+ */
+
+/**
+ * Authenticates a user based on username and password.
+ * @param {object} req - Express request object, expecting { username, password } in the body.
+ * @param {object} res - Express response object.
+ * @returns {Promise<void>} Sends a JWT token on successful login.
+ */
 exports.login = async (req, res) => {
   const { username, password } = req.body;
 

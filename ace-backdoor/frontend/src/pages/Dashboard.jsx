@@ -1,4 +1,3 @@
-// src/pages/Dashboard.jsx
 import React, { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import FilterSection from "../components/FilterSection";
@@ -7,6 +6,11 @@ import Footer from "../components/Footer";
 import axios from "../utils/axios";
 import { toast } from "react-toastify";
 
+/**
+ * @file Dashboard.jsx
+ * @description The main dashboard page of the application. It displays an overview of all
+ * tracked domains and provides filtering capabilities.
+ */
 const Dashboard = () => {
   const [data, setData] = useState([]); // Aggregated data by domain
   const [filteredData, setFilteredData] = useState([]);
@@ -16,7 +20,11 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    const fetchVisitors = async () => {
+    /**
+     * Fetches the aggregated dashboard statistics from the server when the component mounts.
+     * It also handles authentication by checking for a token and redirecting if not found.
+     */
+    const fetchDashboardStats = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
@@ -25,22 +33,25 @@ const Dashboard = () => {
           return;
         }
 
-        const response = await axios.get("/api/visitors");
+        const response = await axios.get("/api/visitors/dashboard-stats");
 
-        const preparedData = prepareData(response.data);
-        setData(preparedData);
-        setFilteredData(preparedData);
-        console.log("Prepared Data:", preparedData); // For debugging
+        setData(response.data);
+        setFilteredData(response.data);
+        console.log("Dashboard Stats:", response.data);
       } catch (error) {
-        console.error("Error fetching visitors:", error);
-        toast.error("Failed to fetch visitors. Please log in again.");
+        console.error("Error fetching dashboard stats:", error);
+        toast.error("Failed to fetch stats. Please log in again.");
         window.location.href = "/login";
       }
     };
 
-    fetchVisitors();
+    fetchDashboardStats();
   }, []);
 
+  /**
+   * @deprecated This function is no longer used for data processing as all aggregation
+   * and normalization is now handled by the backend API. It can be safely removed.
+   */
   function canonicalizeUrl(rawUrl) {
     try {
       const u = new URL(rawUrl);
@@ -66,74 +77,10 @@ const Dashboard = () => {
     }
   }
 
-  const prepareData = (rawData) => {
-    // First, filter out any visitors whose URL contains "/settings/"
-    // (or whatever pattern you consider "admin" routes).
-    const filteredRawData = rawData.filter((visitor) => {
-      return !visitor.url.includes("/settings/");
-    });
-
-    // Then, do your existing reduce logic on the *filtered* array.
-    return filteredRawData.reduce((acc, visitor) => {
-      const normalizedUrl = canonicalizeUrl(visitor.url);
-      let domain;
-      try {
-        domain = new URL(normalizedUrl).hostname;
-      } catch (error) {
-        console.error(`Invalid URL: ${normalizedUrl}`);
-        return acc; // Skip invalid URLs
-      }
-
-      let existingDomain = acc.find((item) => item.domain === domain);
-
-      if (existingDomain) {
-        existingDomain.visitors += 1;
-        existingDomain.uniqueVisitors += visitor.uniqueVisit ? 1 : 0;
-        existingDomain.lastVisit =
-          new Date(visitor.timestamp) > new Date(existingDomain.lastVisit)
-            ? visitor.timestamp
-            : existingDomain.lastVisit;
-
-        let existingUrl = existingDomain.urls.find(
-          (item) => item.url === normalizedUrl
-        );
-
-        if (existingUrl) {
-          existingUrl.visitors += 1;
-          existingUrl.uniqueVisitors += visitor.uniqueVisit ? 1 : 0;
-          existingUrl.lastVisit =
-            new Date(visitor.timestamp) > new Date(existingUrl.lastVisit)
-              ? visitor.timestamp
-              : existingUrl.lastVisit;
-        } else {
-          existingDomain.urls.push({
-            url: normalizedUrl,
-            lastVisit: visitor.timestamp,
-            visitors: 1,
-            uniqueVisitors: visitor.uniqueVisit ? 1 : 0,
-          });
-        }
-      } else {
-        acc.push({
-          domain,
-          lastVisit: visitor.timestamp,
-          visitors: 1,
-          uniqueVisitors: visitor.uniqueVisit ? 1 : 0,
-          urls: [
-            {
-              url: normalizedUrl,
-              lastVisit: visitor.timestamp,
-              visitors: 1,
-              uniqueVisitors: visitor.uniqueVisit ? 1 : 0,
-            },
-          ],
-        });
-      }
-
-      return acc;
-    }, []);
-  };
-
+  /**
+   * Applies client-side filtering to the dashboard data based on user selections
+   * in the FilterSection component.
+   */
   const handleFilter = () => {
     let filtered = [...data];
 
@@ -177,6 +124,9 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
+    /**
+     * Re-runs the filtering logic whenever any of the filter state variables change.
+     */
     handleFilter();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFrom, dateTo, visitorRange, searchTerm]);

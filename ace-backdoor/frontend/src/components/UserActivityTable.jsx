@@ -107,6 +107,11 @@ const flagMap = {
   US: { icon: USFlag, name: "US" },
 };
 
+/**
+ * Formats a timestamp into a human-readable "time ago" string.
+ * @param {string} timestamp - The ISO 8601 timestamp string.
+ * @returns {string} A relative time string (e.g., "5 minutes ago").
+ */
 function formatRelativeTime(timestamp) {
   const now = Date.now();
   const diff = now - new Date(timestamp).getTime();
@@ -121,6 +126,11 @@ function formatRelativeTime(timestamp) {
   else return `${days} days ago`;
 }
 
+/**
+ * @file UserActivityTable.jsx
+ * @description This component fetches and displays a live-updating table of recent visitor
+ * activity for a specific URL. It polls the server for new data every 5 seconds.
+ */
 const UserActivityTable = ({
   selectedFlags,
   percentage,

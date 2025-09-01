@@ -4,7 +4,7 @@ const express = require("express");
 const router = express.Router();
 const {
   trackVisitor,
-  getVisitors,
+  getDashboardStats,
   getUserActivities,
   visitorPing,
 } = require("../controllers/visitorController");
@@ -21,7 +21,8 @@ router.post("/ping", visitorPing);
 const authMiddleware = require("../middleware/authMiddleware");
 router.use(authMiddleware);
 
-router.get("/", getVisitors);
+//router.get("/", getVisitors);
+router.get("/dashboard-stats", getDashboardStats);
 router.get("/user-activities", getUserActivities);
 
 module.exports = router;

@@ -1,7 +1,12 @@
-// src/components/FilterSection.jsx
 import React from "react";
 import searchIcon from "../public/assets/icons/searchIcon.svg";
 
+/**
+ * @file FilterSection.jsx
+ * @description A component that provides UI controls for filtering the main dashboard view.
+ * It allows filtering by date range, total visitor count, and a domain search term.
+ * All state is managed by the parent component (Dashboard.jsx).
+ */
 const FilterSection = ({
   dateFrom,
   setDateFrom,
