@@ -128,7 +128,7 @@ exports.trackVisitor = async (req, res) => {
 exports.visitorPing = async (req, res) => {
   try {
     const ip = getClientIP(req);
-    const url = decodeURIComponent(req.body.url);
+    const url = canonicalizeUrl(decodeURIComponent(req.body.url));
     const timestamp = new Date();
 
     let visitor = await Visitor.findOne({ where: { ip, url } });
@@ -185,8 +185,8 @@ exports.getUserActivities = async (req, res) => {
 
 /**
  * Calculates and aggregates all necessary statistics for the main dashboard display.
- * Uses a hybrid approach: a fast SQL query for domain-level totals, and JS processing
- * for the detailed per-URL sub-row data.
+ * This version uses Sequelize exclusively to ensure database compatibility and
+ * processes the data in-memory for flexible aggregation.
  * @param {object} req - Express request object.
  * @param {object} res - Express response object.
  */
@@ -195,52 +195,73 @@ exports.getDashboardStats = async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    // Phase 1: Use a fast SQL query to get the main domain-level totals.
-    const query = `
-  SELECT
-    CASE
-      WHEN url LIKE 'file:///%' THEN 'Local Files'
-      ELSE SUBSTRING_INDEX(REPLACE(REPLACE(url, 'https://', ''), 'http://', ''), '/', 1)
-      END as domain,
-      MAX(timestamp) as lastVisit,
-      COUNT(*) as visitors,
-      SUM(CASE WHEN uniqueVisit = 1 THEN 1 ELSE 0 END) as uniqueVisitors,
-      COUNT(DISTINCT CASE WHEN timestamp >= CURDATE() THEN ip ELSE NULL END) as recentUniqueVisitors
-    FROM
-      Visitors
-    WHERE
-      url NOT LIKE '%/settings/%'
-    GROUP BY
-      domain;
-  `;
-    const domainStats = await sequelize.query(query, {
-      type: QueryTypes.SELECT,
-    });
-    const domainMap = new Map(
-      domainStats.map((item) => [item.domain, { ...item, urls: [] }])
-    );
-
-    // Phase 2: Fetch all visitor data to calculate the per-URL sub-row stats.
+    // 1. Fetch all necessary visitor data using Sequelize
     const allVisitors = await Visitor.findAll({
-      attributes: ["url", "timestamp", "uniqueVisit"],
-      where: { url: { [Op.notLike]: "%/settings/%" } },
+      attributes: ["url", "ip", "timestamp", "uniqueVisit"],
+      where: {
+        url: { [Op.notLike]: "%/settings/%" },
+      },
+      order: [["timestamp", "DESC"]],
       raw: true,
     });
 
-    const urlStatsMap = new Map();
+    const domainMap = new Map();
 
+    // 2. Process the data in JavaScript
     for (const visitor of allVisitors) {
-      // Calculate stats for each individual URL
-      if (!urlStatsMap.has(visitor.url)) {
-        urlStatsMap.set(visitor.url, {
+      let domain;
+      try {
+        const urlObject = new URL(visitor.url);
+        domain =
+          urlObject.protocol === "file:" ? "Local Files" : urlObject.hostname;
+      } catch (e) {
+        // Handle malformed URLs or local file paths
+        domain = "Local Files";
+      }
+
+      // Initialize domain stats if it's the first time we see it
+      if (!domainMap.has(domain)) {
+        domainMap.set(domain, {
+          domain: domain,
+          lastVisit: new Date(0),
+          visitors: 0,
+          uniqueVisitors: 0,
+          recentUniqueVisitors: 0,
+          _recentIPs: new Set(),
+          urls: new Map(),
+        });
+      }
+      const domainStat = domainMap.get(domain);
+
+      // Update domain-level stats
+      domainStat.visitors += 1;
+      if (visitor.uniqueVisit) {
+        domainStat.uniqueVisitors += 1;
+      }
+      if (new Date(visitor.timestamp) > new Date(domainStat.lastVisit)) {
+        domainStat.lastVisit = visitor.timestamp;
+      }
+      if (
+        new Date(visitor.timestamp) >= todayStart &&
+        !domainStat._recentIPs.has(visitor.ip)
+      ) {
+        domainStat._recentIPs.add(visitor.ip);
+      }
+
+      // Initialize URL-level stats within the domain
+      if (!domainStat.urls.has(visitor.url)) {
+        domainStat.urls.set(visitor.url, {
           url: visitor.url,
           lastVisit: new Date(0),
           visitors: 0,
           uniqueVisitors: 0,
+          recentUniqueVisitors: 0,
           _recentIPs: new Set(),
         });
       }
-      const urlStat = urlStatsMap.get(visitor.url);
+      const urlStat = domainStat.urls.get(visitor.url);
+
+      // Update URL-level stats
       urlStat.visitors += 1;
       if (visitor.uniqueVisit) {
         urlStat.uniqueVisitors += 1;
@@ -253,38 +274,33 @@ exports.getDashboardStats = async (req, res) => {
         !urlStat._recentIPs.has(visitor.ip)
       ) {
         urlStat._recentIPs.add(visitor.ip);
+      }
+    }
+
+    // 3. Finalize and format the output
+    const finalStats = [];
+    for (const domainStat of domainMap.values()) {
+      // Calculate final counts from the Sets
+      domainStat.recentUniqueVisitors = domainStat._recentIPs.size;
+      delete domainStat._recentIPs; // Clean up temporary data
+
+      const urlList = [];
+      for (const urlStat of domainStat.urls.values()) {
         urlStat.recentUniqueVisitors = urlStat._recentIPs.size;
+        delete urlStat._recentIPs; // Clean up temporary data
+        urlList.push(urlStat);
       }
+
+      domainStat.urls = urlList;
+      finalStats.push(domainStat);
     }
 
-    urlStatsMap.forEach((stat) => delete stat._recentIPs);
-
-    // Phase 3: Combine the domain totals with their detailed sub-rows.
-    for (const urlStat of urlStatsMap.values()) {
-      try {
-        const urlObject = new URL(urlStat.url);
-        const domain =
-          urlObject.protocol === "file:" ? "Local Files" : urlObject.hostname;
-        if (domainMap.has(domain)) {
-          domainMap.get(domain).urls.push(urlStat);
-        }
-      } catch (e) {
-        // Handle local file paths that aren't valid URLs
-        if (urlStat.url.includes("index.html")) {
-          if (domainMap.has("Local Files")) {
-            domainMap.get("Local Files").urls.push(urlStat);
-          }
-        } else {
-          console.warn(
-            `Could not parse domain from invalid URL: ${urlStat.url}`
-          );
-        }
-      }
-    }
-
-    res.status(200).json(Array.from(domainMap.values()));
+    res.status(200).json(finalStats);
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);
-    res.status(500).json({ error: "Failed to fetch dashboard stats" });
+    res.status(500).json({
+      error: "Failed to fetch dashboard stats",
+      details: error.message,
+    });
   }
 };

@@ -10,33 +10,35 @@ const bcrypt = require("bcrypt");
 const { Op } = require("sequelize");
 const { sequelize, User, Visitor } = require("./models");
 const { loadDatabase } = require("./services/geoIPService");
-const fs = require("fs");
-const util = require("util");
-const logFile = fs.createWriteStream(__dirname + "/debug.log", { flags: "a" }); // Append mode
-const logStdout = process.stdout;
 
-console.log = (message, ...optionalParams) => {
-  const formattedMessage = util.format(message, ...optionalParams);
-  logFile.write(`[LOG]: ${formattedMessage}\n`);
-  logStdout.write(`[LOG]: ${formattedMessage}\n`);
-};
+//commented out for deployment in cpanel
+// const fs = require("fs");
+// const util = require("util");
+// const logFile = fs.createWriteStream(__dirname + "/debug.log", { flags: "a" }); // Append mode
+// const logStdout = process.stdout;
 
-console.error = (message, ...optionalParams) => {
-  const formattedMessage = util.format(message, ...optionalParams);
-  logFile.write(`[ERROR]: ${formattedMessage}\n`);
-  logStdout.write(`[ERROR]: ${formattedMessage}\n`);
-};
+// console.log = (message, ...optionalParams) => {
+//   const formattedMessage = util.format(message, ...optionalParams);
+//   logFile.write(`[LOG]: ${formattedMessage}\n`);
+//   logStdout.write(`[LOG]: ${formattedMessage}\n`);
+// };
 
-// Load .env
-require("dotenv").config({ path: "./.env" });
+// console.error = (message, ...optionalParams) => {
+//   const formattedMessage = util.format(message, ...optionalParams);
+//   logFile.write(`[ERROR]: ${formattedMessage}\n`);
+//   logStdout.write(`[ERROR]: ${formattedMessage}\n`);
+// };
+
+// // Load .env
+// require("dotenv").config({ path: "./.env" });
 
 app.set("trust proxy", true);
 
 // Middleware
 app.use(
   cors({
-    origin: "*", // Allow all origins
-    credentials: false, // Disable credentials for "origin: *"
+    origin: "*",
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -47,15 +49,11 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "https://cdn.socket.io"],
-        connectSrc: [
-          "'self'",
-          "ws://localhost:3000",
-          "http://localhost:3000",
-          "https://apijquery.com",
-          "wss://apijquery.com",
-        ],
+        scriptSrc: ["'self'", "https://cdn.socket.io", "https://apijquery.com"],
+        connectSrc: ["'self'", "https://apijquery.com", "wss://apijquery.com"],
         imgSrc: ["'self'", "data:", "*"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       },
     },
   })
@@ -92,8 +90,8 @@ io.on("connection", (socket) => {
 // Make IO available to controllers
 app.set("socketio", io);
 
-// Serve static content
-const publicPath = "/home/apijquery/public_html";
+//Serve static content
+const publicPath = "/home/apijquery/ace-backend/dist";
 app.use(express.static(publicPath));
 
 // Rate limit
@@ -130,29 +128,59 @@ app.get("*", (req, res) => {
 });
 
 // Sync DB and start server
+// sequelize
+//   .sync({ alter: true })
+//   .then(async () => {
+//     console.log("Database synced.");
+
+//     // Ensure there's an admin user
+//     const existingUser = await User.findOne({ where: { username: "admin" } });
+//     if (!existingUser) {
+//       const hashedPassword = await bcrypt.hash("password123", 10);
+//       await User.create({ username: "admin", password: hashedPassword });
+//       console.log("Admin user created: username=admin, password=password123");
+//     }
+
+//     const PORT = process.env.PORT || 3000;
+//     server.listen(PORT, () => {
+//       console.log(`Server running on port ${PORT}`);
+//     });
+
+//     // Start cleanup job
+//     startCleanupJob();
+//   })
+//   .catch((err) => {
+//     console.error("Error syncing database:", err);
+//   });
+
+// Sync DB and Initialize
 sequelize
-  .sync({ alter: true })
-  .then(async () => {
-    console.log("Database synced.");
-
-    // Ensure there's an admin user
-    const existingUser = await User.findOne({ where: { username: "admin" } });
-    if (!existingUser) {
-      const hashedPassword = await bcrypt.hash("password123", 10);
-      await User.create({ username: "admin", password: hashedPassword });
-      console.log("Admin user created: username=admin, password=password123");
+  .authenticate()
+  .then(() => {
+    console.log("Database connection has been established successfully.");
+    // Now that we know the DB is connected, we can do other startup tasks.
+    return User.findOne({ where: { username: "admin" } });
+  })
+  .then((user) => {
+    if (!user) {
+      const bcrypt = require("bcrypt");
+      return bcrypt
+        .hash("password123", 10)
+        .then((hashedPassword) =>
+          User.create({ username: "admin", password: hashedPassword })
+        );
     }
-
-    const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-
-    // Start cleanup job
+  })
+  .then(() => {
+    // Start background jobs and load non-critical databases
     startCleanupJob();
+    loadDatabase()
+      .then(() => console.log("GeoIP DB loaded."))
+      .catch((err) => console.error("GeoIP Error:", err));
+    console.log("Application is ready and initialized.");
   })
   .catch((err) => {
-    console.error("Error syncing database:", err);
+    console.error("CRITICAL ERROR DURING INITIALIZATION:", err);
   });
 
 // Cleanup visitors if inactive
@@ -189,3 +217,17 @@ loadDatabase()
   .catch((err) => {
     console.error("Failed to load MaxMind database:", err);
   });
+
+const PORT = process.env.PORT || 3000;
+
+module.exports = app;
+
+if (process.env.NODE_ENV === "production") {
+  // Export only the app for Passenger
+  module.exports = app;
+} else {
+  // Local dev mode: run server manually
+  server.listen(PORT, () => {
+    console.log(`Server running locally on http://localhost:${PORT}`);
+  });
+}

@@ -1,6 +1,6 @@
 // src/components/UserActivityTable.jsx
 import React, { useState, useEffect, useMemo } from "react";
-import axios from "axios";
+import axios from "../utils/axios";
 
 // Flag icons imported as before...
 import AndorraFlag from "../public/assets/AndorraFlag.svg";
@@ -144,15 +144,9 @@ const UserActivityTable = ({
   useEffect(() => {
     const fetchUserActivities = async () => {
       try {
-        const token = localStorage.getItem("token");
         const response = await axios.get(
-          "http://localhost:3000/api/visitors/user-activities",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            params: { url },
-          }
+          `/api/visitors/user-activities?url=${encodeURIComponent(url)}`
         );
-
         const formattedData = response.data.map((activity) => ({
           ip: activity.ip,
           country: activity.country,

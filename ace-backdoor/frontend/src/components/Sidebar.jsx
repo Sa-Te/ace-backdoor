@@ -6,14 +6,16 @@ import dashboardIcon from "../public/assets/icons/dashIcon.svg";
 import rightArrow from "../public/assets/icons/right-arrowIcon.svg";
 import settingIcon from "../public/assets/icons/settingIcon.svg";
 import logoutIcon from "../public/assets/icons/logOut.svg";
+import { useAuth } from "../context/AuthContext";
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("token"); // Remove JWT token
-    navigate("/login"); // Redirect to login page
+    logout();
+    navigate("/login");
   };
 
   // Determine if we're on the settings page

@@ -28,7 +28,7 @@ module.exports = (sequelize) => {
       },
     },
     {
-      tableName: "JavaScriptSnippets", // explicitly define table name
+      tableName: "javascriptsnippets", // explicitly define table name
       freezeTableName: true, // prevents Sequelize from pluralizing the table name
     }
   );

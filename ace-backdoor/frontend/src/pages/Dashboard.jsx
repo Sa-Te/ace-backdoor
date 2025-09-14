@@ -37,7 +37,7 @@ const Dashboard = () => {
 
         setData(response.data);
         setFilteredData(response.data);
-        console.log("Dashboard Stats:", response.data);
+        // console.log("Dashboard Stats:", response.data);
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
         toast.error("Failed to fetch stats. Please log in again.");
@@ -119,7 +119,7 @@ const Dashboard = () => {
       );
     }
 
-    console.log("Filtered Data:", filtered); // For debugging
+    //console.log("Filtered Data:", filtered); // For debugging
     setFilteredData(filtered);
   };
 

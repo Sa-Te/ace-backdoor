@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "../utils/axios";
 import { toast } from "react-toastify";
 import passwordEye from "../public/assets/passwordEye.svg";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * @file Login.jsx
@@ -13,22 +14,19 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    try {
-      const response = await axios.post("/api/auth/login", {
-        username,
-        password,
-      });
-      localStorage.setItem("token", response.data.token);
+    const result = await login(username, password);
+
+    if (result.success) {
       toast.success("Login successful!");
       navigate("/dashboard");
-    } catch (error) {
-      toast.error("Login failed. Please check your credentials.");
+    } else {
+      toast.error(result.message);
     }
   };
-
   /**
    * Temporarily shows the password when the user clicks and holds the visibility toggle.
    */

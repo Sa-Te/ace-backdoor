@@ -10,12 +10,12 @@ instance.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log(
-      "Attaching Authorization header:",
-      config.headers.Authorization
-    );
+    // console.log(
+    //   "Attaching Authorization header:",
+    //   config.headers.Authorization
+    // );
   } else {
-    console.log("No token found in localStorage.");
+    //console.log("No token found in localStorage.");
   }
   return config;
 });

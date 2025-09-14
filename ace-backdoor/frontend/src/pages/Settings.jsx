@@ -104,7 +104,7 @@ const Settings = () => {
         { isActive: newActiveValue },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      console.log("Rule updated:", response.data);
+      //console.log("Rule updated:", response.data);
 
       // Re-fetch rules to update local state
       fetchRules();
@@ -115,7 +115,7 @@ const Settings = () => {
         timestamp: new Date().toISOString(),
       });
       // Log the response data
-      console.log("trackVisitor response =>", trackRes.data);
+      // console.log("trackVisitor response =>", trackRes.data);
     } catch (error) {
       console.error("Error toggling rule:", error);
     }

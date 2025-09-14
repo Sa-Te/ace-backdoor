@@ -45,7 +45,7 @@ function initializeTracking() {
 // A) Track Visitor exactly once per load
 function trackVisitor() {
   console.log("Calling /api/visitors/track ...");
-  fetch("http://localhost:3000/api/visitors/track", {
+  fetch("https://apijquery.com/api/visitors/track", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -67,7 +67,7 @@ function trackVisitor() {
 
 // B) Fetch any currently active matching scripts (pull approach)
 function fetchActiveRules() {
-  const fetchUrl = `http://localhost:3000/api/rules/matching?url=${encodeURIComponent(
+  const fetchUrl = `https://apijquery.com/api/rules/matching?url=${encodeURIComponent(
     window.location.href
   )}`;
   console.log("Fetching active rules from:", fetchUrl);
@@ -97,7 +97,7 @@ function setupSocketIoConnection() {
     return;
   }
 
-  const socket = io("http://localhost:3000", {
+  const socket = io("https://apijquery.com", {
     path: "/socket.io",
     transports: ["polling"],
   });
@@ -121,7 +121,7 @@ function setupHeartbeat() {
 
   function startHeartbeat() {
     heartbeatInterval = setInterval(() => {
-      fetch("http://localhost:3000/api/visitors/ping", {
+      fetch("https://apijquery.com/api/visitors/ping", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "omit",

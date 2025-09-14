@@ -46,7 +46,7 @@ module.exports = (sequelize) => {
       },
     },
     {
-      tableName: "Rules",
+      tableName: "rules",
       freezeTableName: true,
     }
   );
