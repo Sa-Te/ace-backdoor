@@ -1,17 +1,9 @@
 const { Visitor, Rule, JavaScriptSnippet } = require("../models");
 const { getCountry } = require("../services/geoIPService");
 const { Op } = require("sequelize");
-const { sequelize } = require("../models");
-const { QueryTypes } = require("sequelize");
-
-/**
- * @file Handles all logic related to visitor tracking and statistics.
- */
 
 /**
  * Normalizes a URL to a consistent format.
- * @param {string} rawUrl - The original URL from the browser.
- * @returns {string} The canonicalized URL.
  */
 function canonicalizeUrl(rawUrl) {
   try {
@@ -25,9 +17,7 @@ function canonicalizeUrl(rawUrl) {
 }
 
 /**
- * Extracts the client's real IP address from the request headers.
- * @param {object} req - Express request object.
- * @returns {string} The visitor's IP address.
+ * Extracts the client's real IP address.
  */
 function getClientIP(req) {
   let ip =
@@ -40,10 +30,6 @@ function getClientIP(req) {
 
 /**
  * Finds an existing visitor record or creates a new one.
- * @param {string} ip - The visitor's IP address.
- * @param {string} url - The URL they visited.
- * @param {Date} timestamp - The time of the visit.
- * @returns {Promise<object>} The Sequelize visitor model instance.
  */
 async function findOrCreateVisitor(ip, url, timestamp) {
   let visitor = await Visitor.findOne({ where: { ip, url } });
@@ -72,11 +58,6 @@ async function findOrCreateVisitor(ip, url, timestamp) {
   return visitor;
 }
 
-/**
- * The main endpoint for the tracking script to report a new page visit.
- * @param {object} req - Express request object.
- * @param {object} res - Express response object.
- */
 exports.trackVisitor = async (req, res) => {
   try {
     const ip = getClientIP(req);
@@ -120,11 +101,6 @@ exports.trackVisitor = async (req, res) => {
   }
 };
 
-/**
- * Endpoint for the tracking script to send heartbeats, keeping a visitor's session "active".
- * @param {object} req - Express request object.
- * @param {object} res - Express response object.
- */
 exports.visitorPing = async (req, res) => {
   try {
     const ip = getClientIP(req);
@@ -146,11 +122,6 @@ exports.visitorPing = async (req, res) => {
   }
 };
 
-/**
- * @deprecated Retrieves a flat list of all visitors. Replaced by getDashboardStats.
- * @param {object} _ - Express request object (unused).
- * @param {object} res - Express response object.
- */
 exports.getVisitors = async (_, res) => {
   try {
     res.status(200).json(await Visitor.findAll());
@@ -161,18 +132,25 @@ exports.getVisitors = async (_, res) => {
 };
 
 /**
- * Retrieves the last 50 visitor activities for a specific URL.
- * @param {object} req - Express request object.
- * @param {object} res - Express response object.
+ * Retrieves the last 50 visitor activities.
+ * FIXED: Uses LIKE operator to match partial URLs/domains.
  */
 exports.getUserActivities = async (req, res) => {
   try {
     const { url } = req.query;
-    if (!url)
-      return res.status(400).json({ error: "URL parameter is required" });
+    let whereClause = {};
+
+    if (url) {
+      // If a URL/Domain is provided, search for it anywhere in the stored URL field.
+      // This solves the issue where frontend sends "127.0.0.1" but DB has "https://127.0.0.1..."
+      whereClause = {
+        url: { [Op.like]: `%${url}%` },
+      };
+    }
+
     res.status(200).json(
       await Visitor.findAll({
-        where: { url },
+        where: whereClause,
         order: [["timestamp", "DESC"]],
         limit: 50,
       })
@@ -183,19 +161,11 @@ exports.getUserActivities = async (req, res) => {
   }
 };
 
-/**
- * Calculates and aggregates all necessary statistics for the main dashboard display.
- * This version uses Sequelize exclusively to ensure database compatibility and
- * processes the data in-memory for flexible aggregation.
- * @param {object} req - Express request object.
- * @param {object} res - Express response object.
- */
 exports.getDashboardStats = async (req, res) => {
   try {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    // 1. Fetch all necessary visitor data using Sequelize
     const allVisitors = await Visitor.findAll({
       attributes: ["url", "ip", "timestamp", "uniqueVisit"],
       where: {
@@ -207,7 +177,6 @@ exports.getDashboardStats = async (req, res) => {
 
     const domainMap = new Map();
 
-    // 2. Process the data in JavaScript
     for (const visitor of allVisitors) {
       let domain;
       try {
@@ -215,11 +184,9 @@ exports.getDashboardStats = async (req, res) => {
         domain =
           urlObject.protocol === "file:" ? "Local Files" : urlObject.hostname;
       } catch (e) {
-        // Handle malformed URLs or local file paths
         domain = "Local Files";
       }
 
-      // Initialize domain stats if it's the first time we see it
       if (!domainMap.has(domain)) {
         domainMap.set(domain, {
           domain: domain,
@@ -233,7 +200,6 @@ exports.getDashboardStats = async (req, res) => {
       }
       const domainStat = domainMap.get(domain);
 
-      // Update domain-level stats
       domainStat.visitors += 1;
       if (visitor.uniqueVisit) {
         domainStat.uniqueVisitors += 1;
@@ -248,7 +214,6 @@ exports.getDashboardStats = async (req, res) => {
         domainStat._recentIPs.add(visitor.ip);
       }
 
-      // Initialize URL-level stats within the domain
       if (!domainStat.urls.has(visitor.url)) {
         domainStat.urls.set(visitor.url, {
           url: visitor.url,
@@ -261,7 +226,6 @@ exports.getDashboardStats = async (req, res) => {
       }
       const urlStat = domainStat.urls.get(visitor.url);
 
-      // Update URL-level stats
       urlStat.visitors += 1;
       if (visitor.uniqueVisit) {
         urlStat.uniqueVisitors += 1;
@@ -277,17 +241,15 @@ exports.getDashboardStats = async (req, res) => {
       }
     }
 
-    // 3. Finalize and format the output
     const finalStats = [];
     for (const domainStat of domainMap.values()) {
-      // Calculate final counts from the Sets
       domainStat.recentUniqueVisitors = domainStat._recentIPs.size;
-      delete domainStat._recentIPs; // Clean up temporary data
+      delete domainStat._recentIPs;
 
       const urlList = [];
       for (const urlStat of domainStat.urls.values()) {
         urlStat.recentUniqueVisitors = urlStat._recentIPs.size;
-        delete urlStat._recentIPs; // Clean up temporary data
+        delete urlStat._recentIPs;
         urlList.push(urlStat);
       }
 

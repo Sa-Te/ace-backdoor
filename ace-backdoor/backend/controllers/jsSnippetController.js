@@ -1,5 +1,14 @@
 const { JavaScriptSnippet } = require("../models");
 
+/**
+ * @file Manages the business logic for creating, viewing, and managing JavaScript snippets.
+ */
+
+/**
+ * Retrieves all JavaScript snippets from the database.
+ * @param {object} req - Express request object.
+ * @param {object} res - Express response object.
+ */
 exports.getAllScripts = async (req, res) => {
   try {
     const scripts = await JavaScriptSnippet.findAll();
@@ -10,6 +19,11 @@ exports.getAllScripts = async (req, res) => {
   }
 };
 
+/**
+ * Retrieves the currently active script's metadata (not the raw content).
+ * @param {object} req - Express request object.
+ * @param {object} res - Express response object.
+ */
 exports.getLatestScript = async (req, res) => {
   try {
     const script = await JavaScriptSnippet.findOne({
@@ -27,6 +41,11 @@ exports.getLatestScript = async (req, res) => {
   }
 };
 
+/**
+ * Sets a specific script as the single active script for all clients.
+ * @param {object} req - Express request object, expecting { scriptId } in the body.
+ * @param {object} res - Express response object.
+ */
 exports.executeScript = async (req, res) => {
   const { scriptId } = req.body;
 
@@ -57,6 +76,11 @@ exports.executeScript = async (req, res) => {
   }
 };
 
+/**
+ * Creates a new JavaScript snippet.
+ * @param {object} req - Express request object, expecting { name, script } in the body.
+ * @param {object} res - Express response object.
+ */
 exports.createScript = async (req, res) => {
   const { name, script } = req.body;
 
@@ -83,6 +107,11 @@ exports.createScript = async (req, res) => {
   }
 };
 
+/**
+ * Updates the name and content of an existing script.
+ * @param {object} req - Express request object, with script ID in params and { name, script } in body.
+ * @param {object} res - Express response object.
+ */
 exports.updateScript = async (req, res) => {
   const scriptId = req.params.id;
   const { name, script } = req.body;
@@ -111,6 +140,12 @@ exports.updateScript = async (req, res) => {
   }
 };
 
+/**
+ * Serves the raw content of the currently active JavaScript snippet.
+ * This is the public endpoint that client websites will include in their <script> tags.
+ * @param {object} req - Express request object.
+ * @param {object} res - Express response object.
+ */
 exports.getLatestScriptContent = async (req, res) => {
   try {
     const script = await JavaScriptSnippet.findOne({
@@ -133,6 +168,11 @@ exports.getLatestScriptContent = async (req, res) => {
   }
 };
 
+/**
+ * Deletes a script from the database by its ID.
+ * @param {object} req - Express request object, with script ID in params.
+ * @param {object} res - Express response object.
+ */
 exports.deleteScript = async (req, res) => {
   const scriptId = req.params.id;
   try {

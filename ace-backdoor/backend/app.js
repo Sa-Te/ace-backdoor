@@ -1,3 +1,6 @@
+// Load .env
+require("dotenv").config({ path: "./.env" });
+
 const express = require("express");
 const app = express();
 
@@ -29,20 +32,26 @@ const { loadDatabase } = require("./services/geoIPService");
 //   logStdout.write(`[ERROR]: ${formattedMessage}\n`);
 // };
 
-// // Load .env
-// require("dotenv").config({ path: "./.env" });
-
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 
 // Middleware
-app.use(
-  cors({
-    origin: "*",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+
+    // Universal Allow: Reflect the origin back to the browser
+    callback(null, true);
+  },
+  credentials: true, // Allow cookies/headers
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+};
+
+app.use(cors(corsOptions));
+
+// Apply to Preflight (OPTIONS) requests - THIS WAS THE MISSING LINK
+app.options("*", cors(corsOptions));
 
 app.use(
   helmet({
@@ -63,14 +72,23 @@ app.use(express.json());
 
 // Create HTTP server
 const server = http.createServer(app);
+const PORT = process.env.PORT || 3000;
+
+// Always listen on the port cPanel assigns (process.env.PORT)
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
 // Initialize Socket.IO
 const io = require("socket.io")(server, {
   cors: {
-    origin: "*",
+    origin: (origin, callback) => {
+      callback(null, true);
+    },
     methods: ["GET", "POST"],
-    credentials: false,
+    credentials: true,
   },
+  transports: ["polling", "websocket"],
   allowEIO3: true,
 });
 
@@ -91,7 +109,7 @@ io.on("connection", (socket) => {
 app.set("socketio", io);
 
 //Serve static content
-const publicPath = "/home/apijquery/ace-backend/dist";
+const publicPath = path.join(__dirname, "dist");
 app.use(express.static(publicPath));
 
 // Rate limit
@@ -125,6 +143,10 @@ app.get("*", (req, res) => {
       }
     });
   }
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({ status: "Online", port: PORT, env: process.env.NODE_ENV });
 });
 
 // Sync DB and start server
@@ -218,16 +240,4 @@ loadDatabase()
     console.error("Failed to load MaxMind database:", err);
   });
 
-const PORT = process.env.PORT || 3000;
-
 module.exports = app;
-
-if (process.env.NODE_ENV === "production") {
-  // Export only the app for Passenger
-  module.exports = app;
-} else {
-  // Local dev mode: run server manually
-  server.listen(PORT, () => {
-    console.log(`Server running locally on http://localhost:${PORT}`);
-  });
-}

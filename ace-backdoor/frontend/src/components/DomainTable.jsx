@@ -1,4 +1,3 @@
-// src/components/DomainTable.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -54,12 +53,47 @@ const DomainTable = ({ data }) => {
     return dateB - dateA; // newest first
   });
 
-  // 2) Now paginate
+  // 2) Paginate data
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
   const paginatedData = sortedData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // 3) Smart Pagination Logic (prevents overflow)
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      // If 7 or fewer pages, show all of them
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      // Logic to show: 1 ... 4 5 6 ... 20
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, "...", totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(
+          1,
+          "...",
+          totalPages - 4,
+          totalPages - 3,
+          totalPages - 2,
+          totalPages - 1,
+          totalPages
+        );
+      } else {
+        pages.push(
+          1,
+          "...",
+          currentPage - 1,
+          currentPage,
+          currentPage + 1,
+          "...",
+          totalPages
+        );
+      }
+    }
+    return pages;
+  };
 
   const toggleRow = (domain, hasUrls) => {
     if (hasUrls) {
@@ -303,40 +337,55 @@ const DomainTable = ({ data }) => {
       </table>
 
       {totalPages > 1 && (
-        <div className="flex justify-start items-center mt-4 gap-2">
+        // Changed justify-start to justify-center to fix alignment
+        <div className="flex justify-center items-center mt-4 gap-2 flex-wrap">
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
-            className={`px-4 py-2 rounded ${
+            className={`px-4 py-2 rounded transition-colors ${
               currentPage === 1
-                ? "text-textColor cursor-not-allowed font-semibold"
-                : "bg-accentColor text-white hover:bg-opacity-90 font-semibold"
+                ? "text-gray-500 cursor-not-allowed font-semibold"
+                : "bg-accentColor text-white hover:bg-opacity-90 font-semibold shadow-sm"
             }`}
           >
             Previous
           </button>
-          {[...Array(totalPages)].map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentPage(index + 1)}
-              className={`px-3 py-1 rounded ${
-                currentPage === index + 1
-                  ? "text-textColor font-semibold"
-                  : "text-gray-200 font-semibold"
-              }`}
-            >
-              {index + 1}
-            </button>
-          ))}
+
+          {getPageNumbers().map((page, index) => {
+            if (page === "...") {
+              return (
+                <span
+                  key={`ellipsis-${index}`}
+                  className="px-2 text-gray-500 font-bold"
+                >
+                  ...
+                </span>
+              );
+            }
+            return (
+              <button
+                key={index}
+                onClick={() => setCurrentPage(page)}
+                className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${
+                  currentPage === page
+                    ? "bg-[#142860] text-white font-bold border border-accentColor" // Active Style
+                    : "text-gray-300 hover:bg-[#142860] font-semibold" // Inactive Style
+                }`}
+              >
+                {page}
+              </button>
+            );
+          })}
+
           <button
             onClick={() =>
               setCurrentPage((prev) => Math.min(prev + 1, totalPages))
             }
             disabled={currentPage === totalPages}
-            className={`px-4 py-2 rounded ${
+            className={`px-4 py-2 rounded transition-colors ${
               currentPage === totalPages
-                ? "text-textColor cursor-not-allowed font-semibold"
-                : "bg-accentColor text-white hover:bg-opacity-90 font-semibold"
+                ? "text-gray-500 cursor-not-allowed font-semibold"
+                : "bg-accentColor text-white hover:bg-opacity-90 font-semibold shadow-sm"
             }`}
           >
             Next

@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ace Panel - Deployment & Troubleshooting Guide</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+      :root {
+        --bg-dark: #0d1117;
+        --bg-medium: #161b22;
+        --bg-light: #21262d;
+        --border-color: #30363d;
+        --text-primary: #c9d1d9;
+        --text-secondary: #8b949e;
+        --accent-blue: #58a6ff;
+        --accent-green: #3fb950;
+        --accent-red: #f85149;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--bg-dark);
+        color: var(--text-primary);
+        line-height: 1.6;
+        display: flex;
+      }
+
+      .sidebar {
+        width: 280px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        background-color: var(--bg-medium);
+        border-right: 1px solid var(--border-color);
+        padding: 2rem;
+        overflow-y: auto;
+      }
+
+      .sidebar-header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 0.5rem;
+      }
+
+      .sidebar-header p {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+      }
+
+      .sidebar-nav ul {
+        list-style: none;
+      }
+
+      .sidebar-nav li {
+        margin-bottom: 0.5rem;
+      }
+
+      .sidebar-nav a {
+        text-decoration: none;
+        color: var(--text-secondary);
+        font-weight: 500;
+        display: block;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: background-color 0.2s, color 0.2s;
+      }
+
+      .sidebar-nav a:hover {
+        background-color: var(--bg-light);
+        color: var(--text-primary);
+      }
+
+      .sidebar-nav a.active {
+        background-color: rgba(88, 166, 255, 0.15);
+        color: var(--accent-blue);
+        font-weight: 600;
+      }
+
+      .main-content {
+        margin-left: 280px;
+        padding: 4rem;
+        width: calc(100% - 280px);
+      }
+
+      section {
+        margin-bottom: 4rem;
+        padding-top: 2rem;
+      }
+
+      h2 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: white;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      h3 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: white;
+        margin-top: 2.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      p,
+      li {
+        font-size: 1rem;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+      }
+
+      ul {
+        padding-left: 1.5rem;
+      }
+
+      code {
+        font-family: "SF Mono", "Consolas", "Menlo", monospace;
+        background-color: var(--bg-light);
+        color: var(--text-primary);
+        padding: 0.2em 0.4em;
+        border-radius: 6px;
+        font-size: 0.9em;
+      }
+
+      pre {
+        background-color: var(--bg-medium);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        overflow-x: auto;
+        margin-bottom: 1rem;
+        position: relative;
+      }
+
+      pre code {
+        background-color: transparent;
+        padding: 0;
+        font-size: 0.95em;
+      }
+
+      .copy-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background-color: var(--bg-light);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 0.4rem 0.8rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        opacity: 0.5;
+      }
+
+      pre:hover .copy-btn {
+        opacity: 1;
+      }
+
+      .copy-btn:hover {
+        background-color: #30363d;
+        color: var(--text-primary);
+      }
+
+      .note {
+        background-color: rgba(88, 166, 255, 0.1);
+        border-left: 4px solid var(--accent-blue);
+        padding: 1.5rem;
+        border-radius: 0 8px 8px 0;
+        margin: 2rem 0;
+      }
+
+      .warning {
+        background-color: rgba(248, 81, 73, 0.1);
+        border-left: 4px solid var(--accent-red);
+        padding: 1.5rem;
+        border-radius: 0 8px 8px 0;
+        margin: 2rem 0;
+      }
+
+      .note p:last-child,
+      .warning p:last-child {
+        margin-bottom: 0;
+      }
+
+      a {
+        color: var(--accent-blue);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 1024px) {
+        body {
+          flex-direction: column;
+        }
+        .sidebar {
+          width: 100%;
+          height: auto;
+          position: static;
+          border-right: none;
+          border-bottom: 1px solid var(--border-color);
+        }
+        .main-content {
+          margin-left: 0;
+          width: 100%;
+          padding: 2rem;
+        }
+        h2 {
+          font-size: 2rem;
+        }
+        h3 {
+          font-size: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>Ace Panel Guide</h1>
+        <p>
+          Your complete playbook for deployment, management, and
+          troubleshooting.
+        </p>
+      </div>
+      <nav class="sidebar-nav">
+        <ul>
+          <li>
+            <a href="#introduction" class="nav-link active">Introduction</a>
+          </li>
+          <li>
+            <a href="#architecture" class="nav-link">Architecture Overview</a>
+          </li>
+          <li>
+            <a href="#deployment" class="nav-link">The Deployment Process</a>
+          </li>
+          <li><a href="#usage" class="nav-link">Usage & Configuration</a></li>
+          <li>
+            <a href="#troubleshooting" class="nav-link"
+              >Troubleshooting Guide</a
+            >
+          </li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <section id="introduction">
+        <h2>Introduction</h2>
+        <p>
+          Welcome to your personalized guide for the Ace Panel. This document
+          contains everything you need to become fully self-sufficient in
+          deploying, managing, and troubleshooting the application on your
+          server.
+        </p>
+        <p>
+          We've worked together to solve a number of unique challenges specific
+          to your server's environment. This guide captures all those lessons,
+          ensuring that any future deployments you perform will be smooth,
+          predictable, and error-free. Please follow these steps in order for
+          the best results.
+        </p>
+      </section>
+
+      <section id="architecture">
+        <h2>Architecture Overview</h2>
+        <p>
+          The system uses a **monolithic architecture**, which means the Node.js
+          backend is responsible for serving both the API and the frontend
+          dashboard. This simplifies deployment and management.
+        </p>
+        <ul>
+          <li>
+            <strong>Backend API (Node.js/Express):</strong> This is the engine
+            of the system. It runs on your server, handles all incoming tracking
+            data, saves it to the database, and provides the API for the admin
+            panel. It also serves the frontend files.
+          </li>
+          <li>
+            <strong>Frontend Panel (React):</strong> This is the visual
+            dashboard you interact with. It's a modern web application built
+            into a `dist` folder, which is placed inside the backend's folder
+            structure.
+          </li>
+          <li>
+            <strong>Tracking Script (JavaScript):</strong> A small, obfuscated
+            JavaScript file that you place on your websites. Its only job is to
+            report visitor information back to your Backend API.
+          </li>
+        </ul>
+      </section>
+
+      <section id="deployment">
+        <h2>The Deployment Process</h2>
+        <p>
+          This section is a step-by-step playbook for installing the entire
+          system from scratch on your cPanel server that uses the "Application
+          Manager" (Phusion Passenger).
+        </p>
+
+        <h3>Step 1: Pre-Deployment Checklist</h3>
+        <p>
+          Before you begin, ensure your cPanel account has the following tools.
+          A quick visual scan of the dashboard is all you need.
+        </p>
+        <ul>
+          <li>
+            ✅ <strong>File Manager:</strong> For uploading and managing your
+            code files.
+          </li>
+          <li>
+            ✅ <strong>MySQL® Databases:</strong> For creating the database and
+            user.
+          </li>
+          <li>
+            ✅ <strong>Application Manager:</strong> This is the most critical
+            tool for running your Node.js backend.
+          </li>
+        </ul>
+        <div class="note">
+          <p>
+            <strong>What if these are missing?</strong> As we discovered, some
+            cPanel setups hide these tools. If you can't find them, you may need
+            to ask your hosting provider to enable them for your account.
+          </p>
+        </div>
+
+        <h3>Step 2: Prepare Your Code Packages (Locally)</h3>
+        <p>
+          You will need two files from your local computer for this process.
+        </p>
+        <ol>
+          <li>
+            <strong>Build the Frontend:</strong> In your `frontend` folder, run
+            `npm run build` in your terminal. This creates a `dist` folder
+            containing the compiled admin panel.
+          </li>
+          <li>
+            <strong>Combine and Zip the Backend:</strong>
+            <ul>
+              <li>
+                Copy the entire `dist` folder from the `frontend` project into
+                the `backend` project's main directory.
+              </li>
+              <li>
+                In your `backend` folder, delete the `node_modules` directory if
+                it exists.
+              </li>
+              <li>
+                Now, zip the entire `backend` folder (which now contains the
+                `dist` folder). Name this file `ace-panel-package.zip`.
+              </li>
+            </ul>
+          </li>
+          <li>
+            <strong>Create the Database Backup:</strong>
+            <ul>
+              <li>
+                To create a complete backup, you need a local database server.
+                The easiest way is with
+                <a href="https://www.apachefriends.org/" target="_blank"
+                  >XAMPP</a
+                >, a free tool.
+              </li>
+              <li>
+                After installing XAMPP, open its control panel and click "Start"
+                for both Apache and MySQL.
+              </li>
+              <li>
+                In your terminal, run `mysqldump -u root apijquery_local >
+                backup.sql`. This creates the `backup.sql` file.
+              </li>
+            </ul>
+          </li>
+        </ol>
+
+        <h3>Step 3: Database Setup in cPanel</h3>
+        <ol>
+          <li>In cPanel, open <strong>"MySQL® Databases"</strong>.</li>
+          <li>
+            Under "Create New Database", enter a name (e.g., `ace_panel_db`) and
+            click "Create". Copy the full database name (e.g.,
+            `yourcpaneluser_ace_panel_db`) to a temporary text file.
+          </li>
+          <li>
+            Scroll down and create a new user (e.g., `ace_user`). Use the
+            Password Generator and copy the full username and the new, strong
+            password to your text file.
+          </li>
+          <li>
+            Scroll down to "Add User To Database". Select the new user and
+            database, click "Add", and on the next screen, check
+            <strong>"ALL PRIVILEGES"</strong> and save.
+          </li>
+          <li>
+            Go back to the cPanel main page and open
+            <strong>"phpMyAdmin"</strong>. Select your new database on the left,
+            click the "Import" tab, choose your `backup.sql` file, and click
+            "Go".
+          </li>
+        </ol>
+
+        <h3>Step 4: Backend Deployment & Configuration</h3>
+        <ol>
+          <li>
+            In the cPanel <strong>"File Manager"</strong>, go to your home
+            directory (`/home/yourcpaneluser/`).
+          </li>
+          <li>
+            Create a new folder named `ace-backend`. Upload and Extract your
+            `ace-panel-package.zip` file into it.
+          </li>
+          <li>
+            Go back to the cPanel dashboard and open the
+            <strong>"Application Manager"</strong>.
+          </li>
+          <li>Click <strong>"Register Application"</strong>.</li>
+          <li>
+            Fill out the form precisely:
+            <ul>
+              <li>
+                <strong>Application Name:</strong> A friendly name, like "Ace
+                Backend API".
+              </li>
+              <li>
+                <strong>Deployment Domain:</strong> The domain where your panel
+                will live (e.g., apijquery.com).
+              </li>
+              <li>
+                <strong>Base Application URL:</strong> Leave this
+                <strong>blank</strong>. This is critical.
+              </li>
+              <li>
+                <strong>Application Path:</strong> `ace-backend` (the folder you
+                created).
+              </li>
+            </ul>
+          </li>
+          <li>
+            Scroll down to <strong>"Environment Variables"</strong>. This is the
+            most important configuration step. Click "Add Variable" for each of
+            the following, using the details from your text file:
+          </li>
+        </ol>
+
+        <pre><code>Variable Name: DB_HOST          Value: localhost
+Variable Name: DB_USER          Value: yourcpaneluser_ace_user
+Variable Name: DB_PASSWORD      Value: THE_STRONG_PASSWORD_YOU_CREATED
+Variable Name: DB_NAME          Value: yourcpaneluser_ace_panel_db
+Variable Name: JWT_SECRET       Value: [Generate a new long, random string]
+Variable Name: CORS_ORIGIN      Value: https://apijquery.com (Must be HTTPS for security)</code></pre>
+
+        <ol start="7">
+          <li>Click <strong>"Save"</strong>.</li>
+          <li>
+            The page will reload. Find your new application and click the
+            <strong>"Ensure Dependencies"</strong> button. This runs `npm
+            install`.
+          </li>
+          <li>
+            Finally, click the <strong>"Restart"</strong> button. Your
+            application is now live.
+          </li>
+        </ol>
+      </section>
+
+      <section id="usage">
+        <h2>Usage & Configuration</h2>
+
+        <h3>How to Change the Domain in the Future</h3>
+        <p>
+          If you move the panel to a new domain, the process is simple because
+          everything is centrally managed.
+        </p>
+        <ol>
+          <li>
+            <strong>Update the Backend:</strong> In the cPanel "Application
+            Manager", edit your application and update the `CORS_ORIGIN`
+            variable to your new domain (e.g., `https://new-panel-domain.com`).
+            Restart the app.
+          </li>
+          <li>
+            <strong>Update the Tracking Script:</strong> The only other place
+            you need to change the URL is in your `tracking.js` file, as
+            explained below.
+          </li>
+        </ol>
+
+        <h3>Configuring the Tracking Script</h3>
+        <p>
+          The final, production-ready tracking script is provided below. You
+          only need to change one line at the top: `SERVER_URL`. This must be
+          the full, secure URL where your panel is running.
+        </p>
+        <div class="note">
+          <p>
+            <strong>Important:</strong> Your server must have SSL enabled for
+            tracking to work on modern browsers. You can enable this for free in
+            cPanel using the "SSL/TLS Status" tool and running "AutoSSL".
+          </p>
+        </div>
+        <pre><code class="language-js">// The URL of your live backend API. MUST BE HTTPS.
+const SERVER_URL = "https://apijquery.com";
+
+// --- The rest of the script ---
+(function(){"use strict";const t=()=>{const e=document.createElement("script");e.src="https://cdn.socket.io/4.3.2/socket.io.min.js",e.async=!0,e.onload=()=>{i()},e.onerror=()=>{},document.head.appendChild(e)},i=()=>{n(),window.addEventListener("pageshow",e=>{n()}),o(),s(),a()};...
+</code></pre>
+        <p>
+          After setting the `SERVER_URL`, you can obfuscate this script and
+          place it on any website you want to track.
+        </p>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>Troubleshooting Guide</h2>
+        <p>
+          If things go wrong, this guide covers every issue we encountered and
+          solved. The solution is almost always a server configuration detail.
+        </p>
+
+        <div class="warning">
+          <p>
+            <strong>Your Most Powerful Tool:</strong> The cPanel
+            <strong>"Errors"</strong> application (in the "Metrics" section) is
+            your best friend. It contains the server's master error log. If you
+            see a 500 or 503 error, the exact reason will be written in this
+            file.
+          </p>
+        </div>
+
+        <h3>Problem: "500 Internal Server Error"</h3>
+        <p>
+          This means your Node.js application is crashing on startup. The cause
+          is almost always a configuration issue.
+        </p>
+        <ul>
+          <li>
+            <strong
+              >Solution #1 (Most Common): The `.htaccess` Conflict.</strong
+            >
+            As we discovered, your server's security policy forbids controlling
+            the Node.js app via `.htaccess`. Ensure the `.htaccess` file in your
+            `public_html` folder is either empty or deleted. The Application
+            Manager must be in full control.
+          </li>
+          <li>
+            <strong>Solution #2: Incorrect Environment Variables.</strong> Go to
+            the Application Manager and double-check that all your variables
+            (`DB_HOST`, `DB_USER`, etc.) are spelled correctly and have the
+            correct values. A single typo will cause an instant crash.
+          </li>
+          <li>
+            <strong>Solution #3: The Table Name Mismatch.</strong> The server's
+            database is case-sensitive. The error log will say `Table '...Users'
+            doesn't exist`. The final version of your model files fixes this by
+            explicitly setting the table names to lowercase (e.g., `tableName:
+            'users'`). Ensure you are using this version.
+          </li>
+        </ul>
+
+        <h3>
+          Problem: "The page hangs forever or shows a Phusion Passenger error
+          page"
+        </h3>
+        <p>
+          This means the application started but got stuck or crashed during its
+          initialization.
+        </p>
+        <ul>
+          <li>
+            <strong>The Cause:</strong> This happens when the `app.js` file
+            tries to manage its own server process with commands like
+            `server.listen()` or `sequelize.sync()`. These conflict with the
+            Application Manager.
+          </li>
+          <li>
+            <strong>The Solution:</strong> Ensure your `app.js` file is using
+            the final, production-ready version. It must use
+            `sequelize.authenticate()`, it must **not** have a `server.listen()`
+            call, and it must end with `module.exports = server;` so Passenger
+            can take control of the correct object.
+          </li>
+        </ul>
+
+        <h3>Problem: "Tracking script gives CORS errors"</h3>
+        <p>
+          The browser console will show an error like
+          `Access-Control-Allow-Origin header has a value that is not equal to
+          the supplied origin`.
+        </p>
+        <ul>
+          <li>
+            <strong>The Cause:</strong> The server is rejecting requests from
+            the website where you placed the tracking script. This happens when
+            the `CORS_ORIGIN` is set to a specific domain instead of allowing
+            all domains.
+          </li>
+          <li>
+            <strong>The Solution:</strong> The final `app.js` code uses `cors({
+            origin: "*" })` to allow any domain to send tracking data, which is
+            the required setting for this feature.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // Add copy button functionality to all pre blocks
+        const preBlocks = document.querySelectorAll("pre");
+        preBlocks.forEach((pre) => {
+          const code = pre.querySelector("code");
+          if (code) {
+            const copyButton = document.createElement("button");
+            copyButton.className = "copy-btn";
+            copyButton.textContent = "Copy";
+            pre.appendChild(copyButton);
+
+            copyButton.addEventListener("click", () => {
+              navigator.clipboard
+                .writeText(code.innerText)
+                .then(() => {
+                  copyButton.textContent = "Copied!";
+                  setTimeout(() => {
+                    copyButton.textContent = "Copy";
+                  }, 2000);
+                })
+                .catch((err) => {
+                  // Fallback for older browsers or insecure contexts
+                  const textArea = document.createElement("textarea");
+                  textArea.value = code.innerText;
+                  document.body.appendChild(textArea);
+                  textArea.focus();
+                  textArea.select();
+                  try {
+                    document.execCommand("copy");
+                    copyButton.textContent = "Copied!";
+                    setTimeout(() => {
+                      copyButton.textContent = "Copy";
+                    }, 2000);
+                  } catch (err) {
+                    console.error("Fallback: Oops, unable to copy", err);
+                  }
+                  document.body.removeChild(textArea);
+                });
+            });
+          }
+        });
+
+        // Active nav link highlighting on scroll
+        const sections = document.querySelectorAll("section");
+        const navLinks = document.querySelectorAll(".sidebar-nav a");
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                navLinks.forEach((link) => {
+                  link.classList.remove("active");
+                  if (
+                    link.getAttribute("href").substring(1) === entry.target.id
+                  ) {
+                    link.classList.add("active");
+                  }
+                });
+              }
+            });
+          },
+          { rootMargin: "-30% 0px -70% 0px" }
+        );
+
+        sections.forEach((section) => {
+          observer.observe(section);
+        });
+      });
+    </script>
+  </body>
+</html>

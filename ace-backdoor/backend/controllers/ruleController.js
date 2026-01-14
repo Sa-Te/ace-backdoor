@@ -1,208 +1,178 @@
 const { Rule, JavaScriptSnippet } = require("../models");
 const { getCountry } = require("../services/geoIPService");
+const { Op } = require("sequelize");
 
-/**
- * @file Manages the business logic for targeting rules.
- */
+// Helper to get client IP
+function getClientIP(req) {
+  //standard headers used by cPanel/Proxies
+  const headerIP =
+    req.headers["x-client-ip"] ||
+    req.headers["x-real-ip"] ||
+    req.headers["x-forwarded-for"] ||
+    req.headers["cf-connecting-ip"];
 
-/**
- * Fetch rules based on the provided URL.
- */
-exports.getRules = async (req, res) => {
-  try {
-    const { url } = req.query;
-    const normalizedUrl = url ? decodeURIComponent(url) : null; // Decode URL if present
-    const whereClause = normalizedUrl ? { url: normalizedUrl } : {};
+  let ip = headerIP || req.socket.remoteAddress || "Unknown";
 
-    const rules = await Rule.findAll({
-      where: whereClause,
-      include: [
-        { model: JavaScriptSnippet, as: "script", attributes: ["id", "name"] },
-      ],
-    });
-    res.json(rules);
-  } catch (error) {
-    console.error("Error fetching rules:", error);
-    res.status(500).json({ message: "Failed to fetch rules" });
-  }
-};
+  // Handle lists (e.g. "client, proxy1, proxy2") -> take the first one
+  if (ip && ip.includes(",")) ip = ip.split(",")[0].trim();
 
-/**
- * Creates a new targeting rule.
- * @param {object} req - Express request object. Body contains rule details.
- * @param {object} res - Express response object.
- */
+  // Cleanup IPv6 mapping
+  if (ip && ip.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
+  if (ip === "::1") ip = "127.0.0.1";
+
+  return ip;
+}
+
 exports.createRule = async (req, res) => {
-  const { url, countries, percentage, scriptId } = req.body;
-
-  // Validation
-  if (!url || url.trim() === "") {
-    return res
-      .status(400)
-      .json({ message: "URL is required for creating a rule." });
-  }
-  if (!countries || !Array.isArray(countries) || countries.length === 0) {
-    return res
-      .status(400)
-      .json({ message: "Countries must be a non-empty array." });
-  }
-  if (percentage == null || percentage < 0 || percentage > 100) {
-    return res
-      .status(400)
-      .json({ message: "Percentage must be between 0 and 100." });
-  }
-  if (!scriptId) {
-    return res.status(400).json({ message: "scriptId is required." });
-  }
-
   try {
+    const { url, countries, percentage, scriptId } = req.body;
     const rule = await Rule.create({
-      url: decodeURIComponent(url), // Normalize URL
+      url,
       countries,
       percentage,
       scriptId,
-      isActive: false, // By default, new rules are inactive
+      isActive: true,
     });
     res.status(201).json(rule);
   } catch (error) {
     console.error("Error creating rule:", error);
-    res.status(500).json({ message: "Failed to create rule." });
+    res.status(500).json({ error: "Failed to create rule" });
   }
 };
 
-/**
- * Updates an existing rule's properties, including its active status.
- * @param {object} req - Express request object. Params contain rule ID, body contains updates.
- * @param {object} res - Express response object.
- */
-exports.updateRule = async (req, res) => {
-  const ruleId = req.params.id;
-  const { countries, percentage, scriptId, isActive } = req.body;
-
+exports.getRules = async (req, res) => {
   try {
-    const rule = await Rule.findByPk(ruleId);
-    if (!rule) {
-      return res.status(404).json({ message: "Rule not found." });
-    }
+    const rules = await Rule.findAll({
+      include: [{ model: JavaScriptSnippet, as: "script" }],
+    });
+    res.status(200).json(rules);
+  } catch (error) {
+    console.error("Error fetching rules:", error);
+    res.status(500).json({ error: "Failed to fetch rules" });
+  }
+};
 
-    // Update fields if provided
-    if (countries !== undefined) {
-      if (
-        !Array.isArray(countries) ||
-        countries.some((c) => typeof c !== "string")
-      ) {
-        return res
-          .status(400)
-          .json({ message: "Countries must be an array of strings." });
-      }
-      rule.countries = countries;
-    }
+exports.updateRule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { url, countries, percentage, scriptId, isActive } = req.body;
 
-    if (percentage !== undefined) {
-      if (percentage < 0 || percentage > 100) {
-        return res
-          .status(400)
-          .json({ message: "Percentage must be between 0 and 100." });
-      }
-      rule.percentage = percentage;
-    }
+    const rule = await Rule.findByPk(id);
+    if (!rule) return res.status(404).json({ error: "Rule not found" });
 
-    if (scriptId !== undefined) {
-      rule.scriptId = scriptId;
-    }
-
-    if (typeof isActive === "boolean") {
-      rule.isActive = isActive;
-    }
-
-    await rule.save();
-    res.json(rule);
+    await rule.update({ url, countries, percentage, scriptId, isActive });
+    res.status(200).json(rule);
   } catch (error) {
     console.error("Error updating rule:", error);
-    res.status(500).json({ message: "Failed to update rule." });
+    res.status(500).json({ error: "Failed to update rule" });
   }
 };
 
-/**
- * Deletes a rule by its ID.
- * @param {object} req - Express request object. Params contain rule ID.
- * @param {object} res - Express response object.
- */
 exports.deleteRule = async (req, res) => {
-  const ruleId = req.params.id;
   try {
-    const rule = await Rule.findByPk(ruleId);
-    if (!rule) {
-      return res.status(404).json({ message: "Rule not found." });
-    }
-    await rule.destroy();
-    res.json({ message: "Rule deleted successfully." });
+    const { id } = req.params;
+    await Rule.destroy({ where: { id } });
+    res.status(200).json({ message: "Rule deleted successfully" });
   } catch (error) {
     console.error("Error deleting rule:", error);
-    res.status(500).json({ message: "Failed to delete rule." });
+    res.status(500).json({ error: "Failed to delete rule" });
   }
 };
 
-/**
- * Retrieves active rules that match a visitor's request criteria (URL, country).
- * This is a public endpoint called by the tracking script on client websites.
- * @param {object} req - Express request object. Query contains the visitor's 'url'.
- * @param {object} res - Express response object.
- */
+exports.toggleRule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    const rule = await Rule.findByPk(id);
+    if (!rule) return res.status(404).json({ error: "Rule not found" });
+
+    rule.isActive = isActive;
+    await rule.save();
+    res.status(200).json(rule);
+  } catch (error) {
+    console.error("Error toggling rule:", error);
+    res.status(500).json({ error: "Failed to toggle rule" });
+  }
+};
+
 exports.getMatchingRules = async (req, res) => {
   try {
-    const rawUrl = req.query.url;
-    if (!rawUrl) {
-      return res.status(400).json({ message: "Missing ?url= param." });
+    const { url, test_country } = req.query; // Check for Developer Override
+    const ip = getClientIP(req);
+    let rawCountry = getCountry(ip);
+    let country =
+      !rawCountry || rawCountry.toLowerCase() === "unknown" ? "??" : rawCountry;
+
+    // 1. DEVELOPER OVERRIDE (The "Cheat" Mode)
+    let debugMode = "Live";
+    if (test_country) {
+      country = test_country.toUpperCase(); // Force the country
+      debugMode = "Developer Override";
     }
 
-    // 1) detect visitor IP for country
-    let ip =
-      req.headers["x-forwarded-for"] || req.socket.remoteAddress || "Unknown";
-    if (ip.includes(",")) ip = ip.split(",")[0].trim();
-    if (ip.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
-    if (ip === "::1") ip = "127.0.0.1";
-
-    let country = getCountry(ip) || "??";
-    if (country.toUpperCase() === "UK") {
-      country = "GB";
-    }
-
-    // 2) find all active rules for this URL
-    const url = decodeURIComponent(rawUrl);
+    // Fetch active rules
     const activeRules = await Rule.findAll({
-      where: { url, isActive: true },
+      where: { isActive: true },
       include: [{ model: JavaScriptSnippet, as: "script" }],
     });
 
-    // 3) country filter
-    const matchingByCountry = activeRules.filter((rule) => {
-      if (!Array.isArray(rule.countries)) return false;
-      const normalized = rule.countries.map((c) =>
-        c.toUpperCase() === "UK" ? "GB" : c.toUpperCase()
+    const snippetCodes = [];
+    let triggeredCount = 0;
+
+    activeRules.forEach((rule) => {
+      // 2. URL Check
+      const ruleUrl = (rule.url || "").toLowerCase();
+      const visitedUrl = (url || "").toLowerCase();
+
+      if (!visitedUrl.includes(ruleUrl)) return;
+
+      // 3. Country Check
+      let countriesList = rule.countries;
+      if (typeof countriesList === "string") {
+        try {
+          countriesList = JSON.parse(countriesList);
+        } catch (e) {
+          countriesList = [];
+        }
+      }
+      if (!Array.isArray(countriesList)) countriesList = [];
+
+      // Filter out "GLOBAL" (Fix for legacy data)
+      countriesList = countriesList.filter(
+        (c) => c && c.toUpperCase() !== "GLOBAL"
       );
-      return normalized.includes(country.toUpperCase());
+
+      if (countriesList.length > 0) {
+        // Normalize Country Codes
+        const ruleCountries = countriesList.map((c) =>
+          c.toUpperCase() === "UK" ? "GB" : c.toUpperCase()
+        );
+        const visitorCountry =
+          country.toUpperCase() === "UK" ? "GB" : country.toUpperCase();
+
+        if (!ruleCountries.includes(visitorCountry)) return;
+      }
+
+      // 4. Percentage Check
+      const roll = Math.random() * 100;
+      // If Developer Mode is ON, we force the roll to succeed (optional, but helpful)
+      const threshold = test_country ? 100 : rule.percentage;
+
+      if (roll <= threshold) {
+        triggeredCount++;
+        if (rule.script && rule.script.script) {
+          snippetCodes.push(rule.script.script);
+        }
+      }
     });
 
-    // 4) percentage check
-    // For each rule, randomly decide if it triggers, if rule.percentage=100 => always triggers
-    const triggeredRules = matchingByCountry.filter((rule) => {
-      const randomNum = Math.random() * 100;
-      return randomNum <= rule.percentage;
-    });
-
-    // 5) collect snippet codes
-    const snippetCodes = triggeredRules
-      .filter((r) => r.script && r.script.script)
-      .map((r) => r.script.script);
-
-    // optionally return some info
-    return res.json({
-      triggeredCount: snippetCodes.length,
+    res.json({
+      triggeredCount,
       snippetCodes,
+      debug: { ip, country, mode: debugMode }, // <--- This is what the script reads
     });
   } catch (error) {
-    console.error("Error in getMatchingRules:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Error matching rules:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };

@@ -1,23 +1,33 @@
 const express = require("express");
 const router = express.Router();
-const {
-  getRules,
-  createRule,
-  updateRule,
-  deleteRule,
-  getMatchingRules,
-} = require("../controllers/ruleController");
-const authMiddleware = require("../middleware/authMiddleware");
+const ruleController = require("../controllers/ruleController");
 
-// Public route (no auth needed) for the test site to pull
-router.get("/matching", getMatchingRules);
+const authenticateToken = require("../middleware/authMiddleware");
 
-// Protect these routes with auth
-router.use(authMiddleware);
+// Debug Check: Ensure imports are valid before defining routes
+if (
+  !ruleController.getMatchingRules ||
+  !ruleController.getRules ||
+  !ruleController.updateRule
+) {
+  console.error(
+    "CRITICAL ERROR: ruleController is missing functions. Check backend/controllers/ruleController.js"
+  );
+}
+if (typeof authenticateToken !== "function") {
+  console.error(
+    "CRITICAL ERROR: authenticateToken is not a function. Check backend/middleware/authMiddleware.js export."
+  );
+}
 
-router.get("/", getRules);
-router.post("/", createRule);
-router.put("/:id", updateRule);
-router.delete("/:id", deleteRule);
+// Public route for checking rules (used by tracking.js)
+router.get("/matching", ruleController.getMatchingRules);
+
+// Protected routes (Admin Panel)
+router.get("/", authenticateToken, ruleController.getRules);
+router.post("/", authenticateToken, ruleController.createRule);
+router.put("/:id", authenticateToken, ruleController.updateRule);
+router.put("/:id/toggle", authenticateToken, ruleController.toggleRule);
+router.delete("/:id", authenticateToken, ruleController.deleteRule);
 
 module.exports = router;

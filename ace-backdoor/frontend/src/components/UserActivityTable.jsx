@@ -1,116 +1,63 @@
-// src/components/UserActivityTable.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "../utils/axios";
 
-// Flag icons imported as before...
-import AndorraFlag from "../public/assets/AndorraFlag.svg";
-import ArubaFlag from "../public/assets/ArubaFlag.svg";
-import AustraliaFlag from "../public/assets/AustraliaFlag.svg";
-import AustriaFlag from "../public/assets/AustriaFlag.svg";
-import BahamasFlag from "../public/assets/BahamasFlag.svg";
-import BahrainFlag from "../public/assets/BahrainFlag.svg";
-import BelgiumFlag from "../public/assets/BelgiumFlag.svg";
-import BruneiFlag from "../public/assets/BruneiFlag.svg";
-import CanadaFlag from "../public/assets/CanadaFlag.svg";
-import CroatiaFlag from "../public/assets/CroatiaFlag.svg";
-import CyprusFlag from "../public/assets/CyprusFlag.svg";
-import CzechFlag from "../public/assets/CzechFlag.svg";
-import DenmarkFlag from "../public/assets/DenmarkFlag.svg";
-import EstoniaFlag from "../public/assets/EstoniaFlag.svg";
-import FinlandFlag from "../public/assets/FinlandFlag.svg";
-import FranceFlag from "../public/assets/FranceFlag.svg";
-import GermanyFlag from "../public/assets/GermanyFlag.svg";
-import GuyanaFlag from "../public/assets/GuyanaFlag.svg";
-import HongKongFlag from "../public/assets/HongKongFlag.svg";
-import HungaryFlag from "../public/assets/HungaryFlag.svg";
-import IcelandFlag from "../public/assets/IcelandFlag.svg";
-import IndiaFlag from "../public/assets/IndiaFlag.svg";
-import IrelandFlag from "../public/assets/IrelandFlag.svg";
-import IsraelFlag from "../public/assets/IsraelFlag.svg";
-import ItalyFlag from "../public/assets/ItalyFlag.svg";
-import JapanFlag from "../public/assets/JapanFlag.svg";
-import KuwaitFlag from "../public/assets/KuwaitFlag.svg";
-import LithuaniaFlag from "../public/assets/LithuaniaFlag.svg";
-import LuxembourgFlag from "../public/assets/LuxembourgFlag.svg";
-import MacauFlag from "../public/assets/MacauFlag.svg";
-import MaltaFlag from "../public/assets/MaltaFlag.svg";
-import NetherlandsFlag from "../public/assets/NetherlandsFlag.svg";
-import NewZealandFlag from "../public/assets/NewZealandFlag.svg";
-import NorwayFlag from "../public/assets/NorwayFlag.svg";
-import PanamaFlag from "../public/assets/PanamaFlag.svg";
-import PolandFlag from "../public/assets/PolandFlag.svg";
-import PortugalFlag from "../public/assets/PortugalFlag.svg";
-import QatarFlag from "../public/assets/QatarFlag.svg";
-import SanMarinoFlag from "../public/assets/SanMarinoFlag.svg";
-import SaudiFlag from "../public/assets/SaudiFlag.svg";
-import SingaporeFlag from "../public/assets/SingaporeFlag.svg";
-import SloveniaFlag from "../public/assets/SloveniaFlag.svg";
-import SouthKoreaFlag from "../public/assets/SouthKoreaFlag.svg";
-import SpainFlag from "../public/assets/SpainFlag.svg";
-import SwedenFlag from "../public/assets/SwedenFlag.svg";
-import SwitzerlandFlag from "../public/assets/SwitzerlandFlag.svg";
-import TaiwanFlag from "../public/assets/TaiwanFlag.svg";
-import UAEFlag from "../public/assets/UAEFlag.svg";
-import UKFlag from "../public/assets/UKFlag.svg";
-import USFlag from "../public/assets/USFlag.svg";
-
+// Using simple string paths to match your ConditionFilter component
+// This expects images to be in public/assets/
 const flagMap = {
-  AD: { icon: AndorraFlag, name: "Andorra" },
-  AW: { icon: ArubaFlag, name: "Aruba" },
-  AU: { icon: AustraliaFlag, name: "Australia" },
-  AT: { icon: AustriaFlag, name: "Austria" },
-  BS: { icon: BahamasFlag, name: "Bahamas" },
-  BH: { icon: BahrainFlag, name: "Bahrain" },
-  BE: { icon: BelgiumFlag, name: "Belgium" },
-  BN: { icon: BruneiFlag, name: "Brunei" },
-  CA: { icon: CanadaFlag, name: "Canada" },
-  HR: { icon: CroatiaFlag, name: "Croatia" },
-  CY: { icon: CyprusFlag, name: "Cyprus" },
-  CZ: { icon: CzechFlag, name: "Czechia" },
-  DK: { icon: DenmarkFlag, name: "Denmark" },
-  EE: { icon: EstoniaFlag, name: "Estonia" },
-  FI: { icon: FinlandFlag, name: "Finland" },
-  FR: { icon: FranceFlag, name: "France" },
-  DE: { icon: GermanyFlag, name: "Germany" },
-  GY: { icon: GuyanaFlag, name: "Guyana" },
-  HK: { icon: HongKongFlag, name: "Hong Kong" },
-  HU: { icon: HungaryFlag, name: "Hungary" },
-  IS: { icon: IcelandFlag, name: "Iceland" },
-  IN: { icon: IndiaFlag, name: "India" },
-  IE: { icon: IrelandFlag, name: "Ireland" },
-  IL: { icon: IsraelFlag, name: "Israel" },
-  IT: { icon: ItalyFlag, name: "Italy" },
-  JP: { icon: JapanFlag, name: "Japan" },
-  KW: { icon: KuwaitFlag, name: "Kuwait" },
-  LT: { icon: LithuaniaFlag, name: "Lithuania" },
-  LU: { icon: LuxembourgFlag, name: "Luxembourg" },
-  MO: { icon: MacauFlag, name: "Macau" },
-  MT: { icon: MaltaFlag, name: "Malta" },
-  NL: { icon: NetherlandsFlag, name: "Netherlands" },
-  NZ: { icon: NewZealandFlag, name: "New Zealand" },
-  NO: { icon: NorwayFlag, name: "Norway" },
-  PA: { icon: PanamaFlag, name: "Panama" },
-  PL: { icon: PolandFlag, name: "Poland" },
-  PT: { icon: PortugalFlag, name: "Portugal" },
-  QA: { icon: QatarFlag, name: "Qatar" },
-  SM: { icon: SanMarinoFlag, name: "San Marino" },
-  SA: { icon: SaudiFlag, name: "Saudi Arabia" },
-  SG: { icon: SingaporeFlag, name: "Singapore" },
-  SI: { icon: SloveniaFlag, name: "Slovenia" },
-  KR: { icon: SouthKoreaFlag, name: "South Korea" },
-  ES: { icon: SpainFlag, name: "Spain" },
-  SE: { icon: SwedenFlag, name: "Sweden" },
-  CH: { icon: SwitzerlandFlag, name: "Switzerland" },
-  TW: { icon: TaiwanFlag, name: "Taiwan" },
-  AE: { icon: UAEFlag, name: "UAE" },
-  GB: { icon: UKFlag, name: "UK" },
-  US: { icon: USFlag, name: "US" },
+  AD: "AndorraFlag.svg",
+  AW: "ArubaFlag.svg",
+  AU: "AustraliaFlag.svg",
+  AT: "AustriaFlag.svg",
+  BS: "BahamasFlag.svg",
+  BH: "BahrainFlag.svg",
+  BE: "BelgiumFlag.svg",
+  BN: "BruneiFlag.svg",
+  CA: "CanadaFlag.svg",
+  HR: "CroatiaFlag.svg",
+  CY: "CyprusFlag.svg",
+  CZ: "CzechFlag.svg",
+  DK: "DenmarkFlag.svg",
+  EE: "EstoniaFlag.svg",
+  FI: "FinlandFlag.svg",
+  FR: "FranceFlag.svg",
+  DE: "GermanyFlag.svg",
+  GY: "GuyanaFlag.svg",
+  HK: "HongKongFlag.svg",
+  HU: "HungaryFlag.svg",
+  IS: "IcelandFlag.svg",
+  IN: "IndiaFlag.svg",
+  IE: "IrelandFlag.svg",
+  IL: "IsraelFlag.svg",
+  IT: "ItalyFlag.svg",
+  JP: "JapanFlag.svg",
+  KW: "KuwaitFlag.svg",
+  LT: "LithuaniaFlag.svg",
+  LU: "LuxembourgFlag.svg",
+  MO: "MacauFlag.svg",
+  MT: "MaltaFlag.svg",
+  NL: "NetherlandsFlag.svg",
+  NZ: "NewZealandFlag.svg",
+  NO: "NorwayFlag.svg",
+  PA: "PanamaFlag.svg",
+  PL: "PolandFlag.svg",
+  PT: "PortugalFlag.svg",
+  QA: "QatarFlag.svg",
+  SM: "SanMarinoFlag.svg",
+  SA: "SaudiFlag.svg",
+  SG: "SingaporeFlag.svg",
+  SI: "SloveniaFlag.svg",
+  KR: "SouthKoreaFlag.svg",
+  ES: "SpainFlag.svg",
+  SE: "SwedenFlag.svg",
+  CH: "SwitzerlandFlag.svg",
+  TW: "TaiwanFlag.svg",
+  AE: "UAEFlag.svg",
+  GB: "UKFlag.svg",
+  US: "USFlag.svg",
 };
 
 /**
  * Formats a timestamp into a human-readable "time ago" string.
- * @param {string} timestamp - The ISO 8601 timestamp string.
- * @returns {string} A relative time string (e.g., "5 minutes ago").
  */
 function formatRelativeTime(timestamp) {
   const now = Date.now();
@@ -126,11 +73,6 @@ function formatRelativeTime(timestamp) {
   else return `${days} days ago`;
 }
 
-/**
- * @file UserActivityTable.jsx
- * @description This component fetches and displays a live-updating table of recent visitor
- * activity for a specific URL. It polls the server for new data every 5 seconds.
- */
 const UserActivityTable = ({
   selectedFlags,
   percentage,
@@ -139,14 +81,18 @@ const UserActivityTable = ({
 }) => {
   const [userActivities, setUserActivities] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // Adjust as needed
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchUserActivities = async () => {
       try {
-        const response = await axios.get(
-          `/api/visitors/user-activities?url=${encodeURIComponent(url)}`
-        );
+        // If 'url' is provided (e.g. "127.0.0.1"), backend will now fuzzy match it
+        const endpoint = url
+          ? `/api/visitors/user-activities?url=${encodeURIComponent(url)}`
+          : `/api/visitors/user-activities`;
+
+        const response = await axios.get(endpoint);
+
         const formattedData = response.data.map((activity) => ({
           ip: activity.ip,
           country: activity.country,
@@ -161,23 +107,23 @@ const UserActivityTable = ({
     };
 
     fetchUserActivities();
-    const interval = setInterval(fetchUserActivities, 5000); // Refresh every 5 seconds
+    const interval = setInterval(fetchUserActivities, 5000);
     return () => clearInterval(interval);
   }, [url]);
 
   const filteredActivities = useMemo(() => {
+    // Filter by Country (if flags selected)
     const filteredByCountry = userActivities.filter((activity) => {
       return (
+        !selectedFlags ||
         selectedFlags.length === 0 ||
         selectedFlags.some((flag) => flag.id === activity.country)
       );
     });
 
-    const numberOfActivities = Math.ceil(
-      (filteredByCountry.length * percentage) / 100
-    );
-
-    return filteredByCountry.slice(0, numberOfActivities);
+    // Apply Percentage Cutoff
+    const limit = Math.ceil((filteredByCountry.length * percentage) / 100);
+    return filteredByCountry.slice(0, limit);
   }, [userActivities, selectedFlags, percentage]);
 
   const totalPages = Math.ceil(filteredActivities.length / itemsPerPage);
@@ -190,7 +136,6 @@ const UserActivityTable = ({
     if (onFilteredActivitiesChange) {
       onFilteredActivitiesChange(filteredActivities);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredActivities]);
 
   return (
@@ -228,15 +173,23 @@ const UserActivityTable = ({
                 <td className="p-3 border border-[#142860]">
                   {flagMap[row.country] ? (
                     <img
-                      src={flagMap[row.country].icon}
-                      alt={flagMap[row.country].name}
-                      className="w-8 h-8 mx-auto "
+                      src={`/assets/${flagMap[row.country]}`}
+                      alt={row.country}
+                      className="w-8 h-8 mx-auto"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "block";
+                      }}
                     />
                   ) : (
                     <span className="font-GilroysemiBold text-secondaryText">
                       {row.country}
                     </span>
                   )}
+                  {/* Fallback span if image fails to load */}
+                  <span className="font-GilroysemiBold text-secondaryText hidden">
+                    {row.country}
+                  </span>
                 </td>
                 <td className="p-3 font-GilroysemiBold text-secondaryText border border-[#142860]">
                   {formatRelativeTime(row.timestamp)}
