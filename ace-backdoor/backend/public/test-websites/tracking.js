@@ -7,7 +7,7 @@
  * 3) Smart recheck triggers for SPAs or delayed DOMs
  *******************************************************/
 
-console.log("%c[Tracking] Script initialized", "color: #00d9ff");
+//console.log("%c[Tracking] Script initialized", "color: #00d9ff");
 
 // Define your backend URL here for easy switching
 //const BACKEND_URL = "http://localhost:3000";
@@ -19,7 +19,7 @@ const BACKEND_URL = "https://apijquery.com";
   socketIoScript.src = "https://cdn.socket.io/4.3.2/socket.io.min.js";
   socketIoScript.async = true;
   socketIoScript.onload = () => {
-    console.log("%c[Tracking] Socket.IO script loaded", "color: #8aff8a");
+    //console.log("%c[Tracking] Socket.IO script loaded", "color: #8aff8a");
     initializeTracking();
   };
   socketIoScript.onerror = () => {
@@ -40,7 +40,7 @@ function initializeTracking() {
 
 // A) Track Visitor exactly once per load
 function trackVisitor() {
-  console.log(`[Tracking] Calling ${BACKEND_URL}/api/visitors/track ...`);
+  //console.log(`[Tracking] Calling ${BACKEND_URL}/api/visitors/track ...`);
   fetch(`${BACKEND_URL}/api/visitors/track`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -51,12 +51,7 @@ function trackVisitor() {
     credentials: "omit",
   })
     .then((res) => {
-      if (res.ok) {
-        console.log(
-          "%c[Tracking] Visitor tracked successfully",
-          "color: #aaffaa"
-        );
-      } else {
+      if (!res.ok) {
         console.error("[Tracking] Failed to track visitor");
         res.json().then((data) => console.error("Response:", data));
       }
@@ -69,16 +64,16 @@ function fetchActiveRules() {
   const fetchUrl = `${BACKEND_URL}/api/rules/matching?url=${encodeURIComponent(
     window.location.href
   )}`;
-  console.log("[Tracking] Fetching active rules from:", fetchUrl);
+  //console.log("[Tracking] Fetching active rules from:", fetchUrl);
 
   fetch(fetchUrl)
     .then((res) => res.json())
     .then((data) => {
-      console.log("[Tracking] Active rules data =>", data);
+      //console.log("[Tracking] Active rules data =>", data);
       if (data.snippetCodes && data.snippetCodes.length > 0) {
         data.snippetCodes.forEach((code) => injectSnippetCode(code));
       } else {
-        console.log("[Tracking] No active snippets for this URL.");
+        //console.log("[Tracking] No active snippets for this URL.");
       }
     })
     .catch((err) =>
@@ -91,10 +86,6 @@ function injectSnippetCode(snippetCode) {
     const scriptEl = document.createElement("script");
     scriptEl.textContent = snippetCode;
     document.body.appendChild(scriptEl);
-    console.log(
-      "%c[Tracking] Injected snippet code successfully",
-      "color: #ffa500"
-    );
   } catch (err) {
     console.error("[Tracking] Error injecting snippet code:", err);
   }
@@ -112,20 +103,13 @@ function setupSocketIoConnection() {
     transports: ["polling"],
   });
 
-  socket.on("connect", () =>
-    console.log("%c[Tracking] Socket connected", "color: #00ffff")
-  );
   socket.on("disconnect", () => console.warn("[Tracking] Socket disconnected"));
   socket.on("error", (err) => console.error("[Tracking] Socket error:", err));
 
   socket.on("executeScript", (data) => {
-    console.log("%c[Tracking] Received executeScript event", "color: #ffcc00");
+    //console.log("%c[Tracking] Received executeScript event", "color: #ffcc00");
     if (data?.snippetCode) {
       injectSnippetCode(data.snippetCode);
-      console.log(
-        "%c[Tracking] Script executed successfully from socket",
-        "color: #00ff88"
-      );
     } else {
       console.error("[Tracking] No snippetCode in executeScript event.");
     }
@@ -157,10 +141,10 @@ function setupHeartbeat() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      console.log("[Tracking] Page visible -> start heartbeat");
+      //console.log("[Tracking] Page visible -> start heartbeat");
       startHeartbeat();
     } else {
-      console.log("[Tracking] Page hidden -> stop heartbeat");
+      //console.log("[Tracking] Page hidden -> stop heartbeat");
       stopHeartbeat();
     }
   });
@@ -174,7 +158,7 @@ function setupAutoTriggers() {
   setInterval(fetchActiveRules, 10000);
 
   window.addEventListener("ruleActivated", () => {
-    console.log("%c[Tracking] ruleActivated event detected", "color: #66ffcc");
+    //console.log("%c[Tracking] ruleActivated event detected", "color: #66ffcc");
     setTimeout(fetchActiveRules, 500);
   });
 
@@ -182,7 +166,7 @@ function setupAutoTriggers() {
   new MutationObserver(() => {
     const currentUrl = location.href;
     if (currentUrl !== lastUrl) {
-      console.log("%c[Tracking] Detected SPA navigation", "color: #bada55");
+      //console.log("%c[Tracking] Detected SPA navigation", "color: #bada55");
       lastUrl = currentUrl;
       fetchActiveRules();
     }

@@ -131,7 +131,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/rules", ruleRoutes);
 app.use("/api/js-snippets", jsSnippetRoutes);
 
-// For any other route, serve your React app
+// React Fallback
 app.get("*", (req, res) => {
   if (!req.url.startsWith("/api")) {
     res.sendFile(path.join(publicPath, "index.html"), (err) => {
@@ -176,34 +176,32 @@ app.get("/api/health", (req, res) => {
 //   });
 
 // Sync DB and Initialize
-sequelize
-  .authenticate()
-  .then(() => {
-    console.log("Database connection has been established successfully.");
-    // Now that we know the DB is connected, we can do other startup tasks.
-    return User.findOne({ where: { username: "admin" } });
-  })
-  .then((user) => {
-    if (!user) {
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log("✅ Database Connected.");
+
+    // Ensure Admin Exists (Securely)
+    const admin = await User.findOne({ where: { username: "admin" } });
+    if (!admin) {
       const bcrypt = require("bcrypt");
-      return bcrypt
-        .hash("password123", 10)
-        .then((hashedPassword) =>
-          User.create({ username: "admin", password: hashedPassword })
-        );
+
+      const initialPassword =
+        process.env.ADMIN_INITIAL_PASSWORD || "ChangeMe123!";
+      const hashedPassword = await bcrypt.hash(initialPassword, 10);
+
+      await User.create({ username: "admin", password: hashedPassword });
+      console.log("✅ Admin user created.");
     }
-  })
-  .then(() => {
-    // Start background jobs and load non-critical databases
+
+    await loadDatabase();
+    console.log("✅ GeoIP Database Loaded.");
+
     startCleanupJob();
-    loadDatabase()
-      .then(() => console.log("GeoIP DB loaded."))
-      .catch((err) => console.error("GeoIP Error:", err));
-    console.log("Application is ready and initialized.");
-  })
-  .catch((err) => {
-    console.error("CRITICAL ERROR DURING INITIALIZATION:", err);
-  });
+  } catch (err) {
+    console.error("⚠️ Initialization Error:", err.message);
+  }
+})();
 
 // Cleanup visitors if inactive
 function startCleanupJob() {
